@@ -36,6 +36,8 @@ void APickupItemBase::OnConstruction(const FTransform& Transform)
 
 bool APickupItemBase::CanInteract_Implementation(AActor* Interactor)
 {
+	UE_LOG(LogEmbersGameplayTest, VeryVerbose, TEXT("'%s' can be interacted with by '%s' : %s"), 
+		*GetNameSafe(this), *GetNameSafe(Interactor), bInteractionEnabled ? TEXT("true") : TEXT("false"));
 	return bInteractionEnabled;
 }
 

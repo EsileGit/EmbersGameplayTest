@@ -41,13 +41,20 @@ void UInteractionComponent::UpdateFocus()
 	{
 		AActor* HitActor = Hit.GetActor();
 
-		if (IInteractable* Interactable = Cast<IInteractable>(HitActor))
+		// Ici on peut économiser le cast (on n'appelle pas l'execute sur le Interactable mais sur l'Uobject directmeent)
+		// if (IInteractable* Interactable = Cast<IInteractable>(HitActor))
+		if (!(IsValid(HitActor) && HitActor->Implements<UInteractable>()))
 		{
-			if (Interactable->CanInteract_Implementation(GetOwner()))
-			{
-				SetFocusedActor(HitActor);
-			}
+			// Ici on s'attend à ce que HitActor soit toujours valide, car TraceForInteractable renvoie bHit. Mais
+			// le check de validité permet de s'assurer que le code ne peut pas crasher dans un cas innattendu 
+			return;
 		}
+		
+		if (IInteractable::Execute_CanInteract(HitActor, GetOwner()))
+		{
+			SetFocusedActor(HitActor);
+		}
+		
 	}
 }
 
@@ -86,16 +93,16 @@ void UInteractionComponent::SetFocusedActor(AActor* NewFocusedActor)
 
 	AActor* PreviousFocusedActor = FocusedActor;
 
-	if (IInteractable* PreviousInteractable = Cast<IInteractable>(PreviousFocusedActor))
+	if (IsValid(PreviousFocusedActor) && PreviousFocusedActor->Implements<UInteractable>())
 	{
-		PreviousInteractable->OnFocusEnd_Implementation(GetOwner());
+		IInteractable::Execute_OnFocusEnd(PreviousFocusedActor, GetOwner());
 	}
 
 	FocusedActor = NewFocusedActor;
 
-	if (IInteractable* NewInteractable = Cast<IInteractable>(FocusedActor))
+	if (IsValid(FocusedActor) && FocusedActor->Implements<UInteractable>())
 	{
-		NewInteractable->OnFocusBegin_Implementation(GetOwner());
+		IInteractable::Execute_OnFocusBegin(FocusedActor, GetOwner());
 	}
 
 	OnInteractionFocusChanged.Broadcast(FocusedActor, PreviousFocusedActor);
@@ -110,16 +117,14 @@ void UInteractionComponent::TryInteract()
 		return;
 	}
 
-	IInteractable* Interactable = Cast<IInteractable>(FocusedActor);
-
-	if (!Interactable)
+	if (!(IsValid(FocusedActor) && FocusedActor->Implements<UInteractable>()))
 	{
 		return;
 	}
 
-	Interactable->OnInteract_Implementation(GetOwner());
+	IInteractable::Execute_OnInteract(FocusedActor, GetOwner());
 
-	if (Interactable->CanBeGrabbed_Implementation(GetOwner()))
+	if (IInteractable::Execute_CanBeGrabbed(FocusedActor, GetOwner()))
 	{
 		GrabItem(FocusedActor);
 	}
@@ -159,9 +164,9 @@ void UInteractionComponent::DropHeldItem()
 
 FText UInteractionComponent::GetFocusedInteractionPrompt() const
 {
-	if (IInteractable* Interactable = Cast<IInteractable>(FocusedActor))
+	if (IsValid(FocusedActor) && FocusedActor->Implements<UInteractable>())
 	{
-		return Interactable->GetInteractionPrompt_Implementation();
+		return IInteractable::Execute_GetInteractionPrompt(FocusedActor);
 	}
 
 	return FText::GetEmpty();
