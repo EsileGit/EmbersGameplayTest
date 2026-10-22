@@ -68,7 +68,7 @@ bool UInteractionComponent::TraceForInteractable(FHitResult& OutHit) const
 	}
 
 	const FVector TraceStart = CameraComponent->GetComponentLocation();
-	const FVector TraceEnd = TraceStart + (GetOwner()->GetActorForwardVector() * InteractionDistance);
+	const FVector TraceEnd = TraceStart + (CameraComponent->GetForwardVector() * InteractionDistance);
 
 	FCollisionQueryParams QueryParams(FName(TEXT("InteractionTrace")), false);
 	QueryParams.AddIgnoredActor(GetOwner());
