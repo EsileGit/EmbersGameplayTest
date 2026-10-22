@@ -36,26 +36,28 @@ void UInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 void UInteractionComponent::UpdateFocus()
 {
 	FHitResult Hit;
-
+	AActor* NewFocusedActor = nullptr;
+	
 	if (TraceForInteractable(Hit))
 	{
 		AActor* HitActor = Hit.GetActor();
 
-		// Ici on peut économiser le cast (on n'appelle pas l'execute sur le Interactable mais sur l'Uobject directmeent)
+		// I'm just realizing now that I was previously writing comments in French, which feels less natural in code for 
+		// me than English, so I will switch to English
+		// Ici on peut économiser le cast (on n'appelle pas l'execute sur le Interactable mais sur l'Uobject directement)
 		// if (IInteractable* Interactable = Cast<IInteractable>(HitActor))
-		if (!(IsValid(HitActor) && HitActor->Implements<UInteractable>()))
+		if (IsValid(HitActor) && 
+			HitActor->Implements<UInteractable>()
+			&& IInteractable::Execute_CanInteract(HitActor, GetOwner()))
 		{
 			// Ici on s'attend à ce que HitActor soit toujours valide, car TraceForInteractable renvoie bHit. Mais
-			// le check de validité permet de s'assurer que le code ne peut pas crasher dans un cas innattendu 
-			return;
+			// le check de validité permet de s'assurer que le code ne peut pas crasher dans un cas innattendu
+			NewFocusedActor = HitActor;
 		}
-		
-		if (IInteractable::Execute_CanInteract(HitActor, GetOwner()))
-		{
-			SetFocusedActor(HitActor);
-		}
-		
 	}
+	
+	// We set the newly focused actor in any case (either to set it or to reset it)
+	SetFocusedActor(NewFocusedActor);
 }
 
 bool UInteractionComponent::TraceForInteractable(FHitResult& OutHit) const
