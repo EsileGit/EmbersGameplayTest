@@ -8,6 +8,7 @@
 
 class UInteractionComponent;
 /**
+ * /!\ OBSOLETE /!\ (Abandonned for ease of use and gain of time)
  * A parcel item that derives from the PickupItem
  */
 UCLASS()
