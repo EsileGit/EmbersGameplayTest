@@ -10,6 +10,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "InteractionComponent.h"
 #include "Component/EGT_InspectComponent.h"
+#include "Component/EGT_ThrowComponent.h"
 #include "EmbersGameplayTest.h"
 
 AEmbersGameplayTestCharacter::AEmbersGameplayTestCharacter()
@@ -41,6 +42,9 @@ AEmbersGameplayTestCharacter::AEmbersGameplayTestCharacter()
 	// For the inspect mode
 	InspectComponent = CreateDefaultSubobject<UEGT_InspectComponent>(TEXT("Inspect Component"));
 
+	// For the charged throw
+	ThrowComponent = CreateDefaultSubobject<UEGT_ThrowComponent>(TEXT("Throw Component"));
+
 	// configure the character comps
 	GetMesh()->SetOwnerNoSee(true);
 	GetMesh()->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::WorldSpaceRepresentation;
@@ -70,6 +74,7 @@ void AEmbersGameplayTestCharacter::SetupPlayerInputComponent(UInputComponent* Pl
 
 		// Interacting
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AEmbersGameplayTestCharacter::DoInteract);
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Completed, this, &AEmbersGameplayTestCharacter::DoInteractEnd);
 
 		// Inspecting
 		EnhancedInputComponent->BindAction(InspectAction, ETriggerEvent::Started, this, &AEmbersGameplayTestCharacter::DoInspect);
@@ -164,6 +169,13 @@ void AEmbersGameplayTestCharacter::DoInteract()
 		return;
 	}
 
+	// While carrying an item, interacting charges a throw instead of dropping it
+	if (InteractionComponent && InteractionComponent->IsHoldingItem() && ThrowComponent)
+	{
+		ThrowComponent->StartCharging();
+		return;
+	}
+
 	// pass the interaction to the interaction component
 	if (InteractionComponent)
 	{
@@ -171,8 +183,22 @@ void AEmbersGameplayTestCharacter::DoInteract()
 	}
 }
 
+void AEmbersGameplayTestCharacter::DoInteractEnd()
+{
+	if (ThrowComponent && ThrowComponent->IsCharging())
+	{
+		ThrowComponent->ReleaseThrow();
+	}
+}
+
 void AEmbersGameplayTestCharacter::DoInspect()
 {
+	// inspecting is blocked while charging a throw
+	if (ThrowComponent && ThrowComponent->IsCharging())
+	{
+		return;
+	}
+
 	// pass the inspect toggle to the inspect component
 	if (InspectComponent)
 	{

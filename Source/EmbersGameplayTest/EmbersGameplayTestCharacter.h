@@ -13,6 +13,7 @@ class UCameraComponent;
 class UInputAction;
 class UInteractionComponent;
 class UEGT_InspectComponent;
+class UEGT_ThrowComponent;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -40,6 +41,10 @@ class AEmbersGameplayTestCharacter : public ACharacter
 	/** Handles inspecting (and rotating) the held item */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UEGT_InspectComponent* InspectComponent;
+
+	/** Handles charging and throwing the held item */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UEGT_ThrowComponent* ThrowComponent;
 
 protected:
 
@@ -104,6 +109,10 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoInteract();
 
+	/** Handles interact release inputs from either controls or UI interfaces (releases a charged throw) */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	virtual void DoInteractEnd();
+
 #pragma region Inspect
 	/** Handles inspect toggle inputs from either controls or UI interfaces */
 	virtual void DoInspect();
@@ -136,6 +145,9 @@ public:
 
 	/** Returns the inspect component **/
 	UEGT_InspectComponent* GetInspectComponent() const { return InspectComponent; }
+
+	/** Returns the throw component **/
+	UEGT_ThrowComponent* GetThrowComponent() const { return ThrowComponent; }
 
 };
 

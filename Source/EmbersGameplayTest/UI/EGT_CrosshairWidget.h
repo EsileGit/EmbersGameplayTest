@@ -8,6 +8,7 @@
 
 class APawn;
 class UInteractionComponent;
+class UEGT_ThrowComponent;
 
 /**
  * Base class for the screen-centered crosshair.
@@ -33,6 +34,14 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category="Crosshair")
 	void OnHeldStateChanged(bool bIsHolding, AActor* HeldItem);
 
+	// Called when the player starts or stops charging a throw. Read GetThrowChargeAlpha while charging to drive the gauge.
+	UFUNCTION(BlueprintImplementableEvent, Category="Crosshair")
+	void OnThrowChargeStateChanged(bool bIsCharging);
+
+	// Current throw gauge value in [0, 1] (0 when not charging)
+	UFUNCTION(BlueprintPure, Category="Crosshair")
+	float GetThrowChargeAlpha() const;
+
 #pragma endregion
 
 #pragma region Binding
@@ -48,12 +57,17 @@ protected:
 	UFUNCTION()
 	void HandleHeldItemChanged(AActor* HeldItem);
 
-	// Unbinds from the current interaction component (if any) and binds to the one on the given pawn
+	// Callback triggered by the pawn's throw component
+	UFUNCTION()
+	void HandleThrowChargeChanged(bool bIsCharging);
+
+	// Unbinds from the current interaction / throw components (if any) and binds to the ones on the given pawn
 	void BindToPawn(APawn* Pawn);
 	void UnbindFromInteractionComponent();
 
 	// Runtime
 	TWeakObjectPtr<UInteractionComponent> BoundInteractionComponent;
+	TWeakObjectPtr<UEGT_ThrowComponent> BoundThrowComponent;
 
 #pragma endregion
 };

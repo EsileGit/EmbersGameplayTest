@@ -4,6 +4,7 @@
 #include "UI/EGT_CrosshairWidget.h"
 
 #include "Interaction/InteractionComponent.h"
+#include "Component/EGT_ThrowComponent.h"
 
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -63,6 +64,13 @@ void UEGT_CrosshairWidget::BindToPawn(APawn* Pawn)
 		return;
 	}
 
+	if (UEGT_ThrowComponent* ThrowComponent = Pawn->FindComponentByClass<UEGT_ThrowComponent>())
+	{
+		BoundThrowComponent = ThrowComponent;
+		ThrowComponent->OnThrowChargeChanged.AddUniqueDynamic(this, &ThisClass::HandleThrowChargeChanged);
+		HandleThrowChargeChanged(ThrowComponent->IsCharging());
+	}
+
 	UInteractionComponent* InteractionComponent = Pawn->FindComponentByClass<UInteractionComponent>();
 	if (!InteractionComponent)
 	{
@@ -88,6 +96,13 @@ void UEGT_CrosshairWidget::UnbindFromInteractionComponent()
 	}
 
 	BoundInteractionComponent.Reset();
+
+	if (UEGT_ThrowComponent* ThrowComponent = BoundThrowComponent.Get())
+	{
+		ThrowComponent->OnThrowChargeChanged.RemoveDynamic(this, &ThisClass::HandleThrowChargeChanged);
+	}
+
+	BoundThrowComponent.Reset();
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -100,6 +115,19 @@ void UEGT_CrosshairWidget::HandleFocusChanged(AActor* NewFocusedActor, AActor* P
 void UEGT_CrosshairWidget::HandleHeldItemChanged(AActor* HeldItem)
 {
 	OnHeldStateChanged(HeldItem != nullptr, HeldItem);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+void UEGT_CrosshairWidget::HandleThrowChargeChanged(bool bIsCharging)
+{
+	OnThrowChargeStateChanged(bIsCharging);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+float UEGT_CrosshairWidget::GetThrowChargeAlpha() const
+{
+	const UEGT_ThrowComponent* ThrowComponent = BoundThrowComponent.Get();
+	return ThrowComponent ? ThrowComponent->GetChargeAlpha() : 0.0f;
 }
 
 #pragma endregion
