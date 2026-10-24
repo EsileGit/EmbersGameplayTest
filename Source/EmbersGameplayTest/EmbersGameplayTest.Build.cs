@@ -26,12 +26,12 @@ public class EmbersGameplayTest : ModuleRules
 		PublicIncludePaths.AddRange(new string[] {
 			"EmbersGameplayTest",
 			"EmbersGameplayTest/Interaction",
-			"EmbersGameplayTest/Variant_Horror",
-			"EmbersGameplayTest/Variant_Horror/UI",
-			"EmbersGameplayTest/Variant_Shooter",
-			"EmbersGameplayTest/Variant_Shooter/AI",
-			"EmbersGameplayTest/Variant_Shooter/UI",
-			"EmbersGameplayTest/Variant_Shooter/Weapons"
+			//"EmbersGameplayTest/Variant_Horror",
+			//"EmbersGameplayTest/Variant_Horror/UI",
+			//"EmbersGameplayTest/Variant_Shooter",
+			//"EmbersGameplayTest/Variant_Shooter/AI",
+			//"EmbersGameplayTest/Variant_Shooter/UI",
+			//"EmbersGameplayTest/Variant_Shooter/Weapons"
 		});
 
 		// Uncomment if you are using Slate UI

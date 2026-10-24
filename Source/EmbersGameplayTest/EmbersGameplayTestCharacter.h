@@ -12,6 +12,7 @@ class USkeletalMeshComponent;
 class UCameraComponent;
 class UInputAction;
 class UInteractionComponent;
+class UEGT_InspectComponent;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -36,6 +37,10 @@ class AEmbersGameplayTestCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UInteractionComponent* InteractionComponent;
 
+	/** Handles inspecting (and rotating) the held item */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UEGT_InspectComponent* InspectComponent;
+
 protected:
 
 	/** Jump Input Action */
@@ -57,6 +62,16 @@ protected:
 	/** Interact Input Action */
 	UPROPERTY(EditAnywhere, Category ="Input")
 	UInputAction* InteractAction;
+	
+	/** Inspect (toggle) Input Action */
+	UPROPERTY(EditAnywhere, Category ="Input")
+	UInputAction* InspectAction;
+	/** Leave inspect mode Input Action (if we want a different key than for the toggle) */
+	UPROPERTY(EditAnywhere, Category ="Input")
+	UInputAction* LeaveInspectMode;
+	/** Inspect rotation drag (hold) Input Action */
+	UPROPERTY(EditAnywhere, Category ="Input")
+	UInputAction* InspectRotateAction;
 
 public:
 	AEmbersGameplayTestCharacter();
@@ -89,6 +104,19 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoInteract();
 
+#pragma region Inspect
+	/** Handles inspect toggle inputs from either controls or UI interfaces */
+	virtual void DoInspect();
+	virtual void ExitInspect();
+
+	/** Handles inspect drag start / end inputs from either controls or UI interfaces */
+	virtual void DoInspectDragStart();
+	virtual void DoInspectDragEnd();
+
+	/** Returns true while the held item is being inspected (movement and look are locked) */
+	bool IsInspecting() const;
+#pragma endregion
+	
 protected:
 
 	/** Set up input action bindings */
@@ -105,6 +133,9 @@ public:
 
 	/** Returns the interaction component **/
 	UInteractionComponent* GetInteractionComponent() const { return InteractionComponent; }
+
+	/** Returns the inspect component **/
+	UEGT_InspectComponent* GetInspectComponent() const { return InspectComponent; }
 
 };
 

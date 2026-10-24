@@ -9,6 +9,7 @@
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "InteractionComponent.h"
+#include "Component/EGT_InspectComponent.h"
 #include "EmbersGameplayTest.h"
 
 AEmbersGameplayTestCharacter::AEmbersGameplayTestCharacter()
@@ -36,6 +37,9 @@ AEmbersGameplayTestCharacter::AEmbersGameplayTestCharacter()
 
 	// Create the interaction component that handles looking at and using world objects
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("Interaction Component"));
+
+	// For the inspect mode
+	InspectComponent = CreateDefaultSubobject<UEGT_InspectComponent>(TEXT("Inspect Component"));
 
 	// configure the character comps
 	GetMesh()->SetOwnerNoSee(true);
@@ -66,6 +70,12 @@ void AEmbersGameplayTestCharacter::SetupPlayerInputComponent(UInputComponent* Pl
 
 		// Interacting
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AEmbersGameplayTestCharacter::DoInteract);
+
+		// Inspecting
+		EnhancedInputComponent->BindAction(InspectAction, ETriggerEvent::Started, this, &AEmbersGameplayTestCharacter::DoInspect);
+		EnhancedInputComponent->BindAction(LeaveInspectMode, ETriggerEvent::Started, this, &AEmbersGameplayTestCharacter::ExitInspect);
+		EnhancedInputComponent->BindAction(InspectRotateAction, ETriggerEvent::Started, this, &AEmbersGameplayTestCharacter::DoInspectDragStart);
+		EnhancedInputComponent->BindAction(InspectRotateAction, ETriggerEvent::Completed, this, &AEmbersGameplayTestCharacter::DoInspectDragEnd);
 	}
 	else
 	{
@@ -96,6 +106,16 @@ void AEmbersGameplayTestCharacter::LookInput(const FInputActionValue& Value)
 
 void AEmbersGameplayTestCharacter::DoAim(float Yaw, float Pitch)
 {
+	// while inspecting, the look input rotates the held item instead of the camera
+	if (IsInspecting())
+	{
+		if (InspectComponent->IsDragging())
+		{
+			InspectComponent->AddInspectRotationInput(Yaw, Pitch);
+		}
+		return;
+	}
+
 	if (GetController())
 	{
 		// pass the rotation inputs
@@ -106,6 +126,11 @@ void AEmbersGameplayTestCharacter::DoAim(float Yaw, float Pitch)
 
 void AEmbersGameplayTestCharacter::DoMove(float Right, float Forward)
 {
+	if (IsInspecting())
+	{
+		return;
+	}
+
 	if (GetController())
 	{
 		// pass the move inputs
@@ -116,6 +141,11 @@ void AEmbersGameplayTestCharacter::DoMove(float Right, float Forward)
 
 void AEmbersGameplayTestCharacter::DoJumpStart()
 {
+	if (IsInspecting())
+	{
+		return;
+	}
+
 	// pass Jump to the character
 	Jump();
 }
@@ -128,9 +158,53 @@ void AEmbersGameplayTestCharacter::DoJumpEnd()
 
 void AEmbersGameplayTestCharacter::DoInteract()
 {
+	// interacting is blocked while inspecting: leave inspect mode first
+	if (IsInspecting())
+	{
+		return;
+	}
+
 	// pass the interaction to the interaction component
 	if (InteractionComponent)
 	{
 		InteractionComponent->TryInteract();
 	}
+}
+
+void AEmbersGameplayTestCharacter::DoInspect()
+{
+	// pass the inspect toggle to the inspect component
+	if (InspectComponent)
+	{
+		InspectComponent->ToggleInspect();
+	}
+}
+
+void AEmbersGameplayTestCharacter::ExitInspect()
+{
+	if (InspectComponent)
+	{
+		InspectComponent->ExitInspect();
+	}
+}
+
+void AEmbersGameplayTestCharacter::DoInspectDragStart()
+{
+	if (InspectComponent)
+	{
+		InspectComponent->SetDragging(true);
+	}
+}
+
+void AEmbersGameplayTestCharacter::DoInspectDragEnd()
+{
+	if (InspectComponent)
+	{
+		InspectComponent->SetDragging(false);
+	}
+}
+
+bool AEmbersGameplayTestCharacter::IsInspecting() const
+{
+	return InspectComponent && InspectComponent->IsInspecting();
 }

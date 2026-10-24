@@ -11,6 +11,21 @@ class UInteractionComponent;
 class UStaticMeshComponent;
 
 /**
+ * Everything the inspect UI can display about a parcel. Add new fields here (identifier, damage...).
+ */
+USTRUCT(BlueprintType)
+struct FEGT_ParcelInspectInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel")
+	FText DisplayName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel", meta = (Units = "kg"))
+	float MassKg = 0.0f;
+};
+
+/**
  * Base class for parcels the player can look at, interact with and carry around.
  * The item shape (mesh) determines its interaction "zone" and its physics
  */
@@ -45,6 +60,10 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Parcel")
 	bool IsHeld() const { return HoldingInteractionComponent != nullptr; }
+
+	/** Gathers the info displayed by the inspect UI */
+	UFUNCTION(BlueprintPure, Category="Parcel")
+	FEGT_ParcelInspectInfo GetInspectInfo() const;
 
 
 protected:

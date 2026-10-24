@@ -164,6 +164,17 @@ void AEGT_ParcelBase::SetInteractionEnabled(bool bEnabled)
 	bInteractionEnabled = bEnabled;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+FEGT_ParcelInspectInfo AEGT_ParcelBase::GetInspectInfo() const
+{
+	FEGT_ParcelInspectInfo Info;
+	Info.DisplayName = FText::FromString(GetActorNameOrLabel());
+	//Info.MassKg = ParcelMesh->GetMass(); // This warns that simulate physics is not enabled. Would require further investigation to see whether the new method to get mass is fine or not
+	Info.MassKg = ParcelMesh->CalculateMass();
+	
+	return Info;
+}
+
 #pragma endregion
 
 #pragma region Feel
