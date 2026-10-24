@@ -7,6 +7,7 @@
 #include "Interaction/Interactable.h"
 #include "EGT_ParcelBase.generated.h"
 
+class UEGT_ParcelDefinition;
 class UInteractionComponent;
 class UStaticMeshComponent;
 
@@ -41,6 +42,10 @@ public:
 	// Getter & Setter
 	UStaticMeshComponent* GetParcelMesh() const { return ParcelMesh; }
 
+	UFUNCTION(BlueprintPure, Category="Parcel")
+	UEGT_ParcelDefinition* GetDefinition() const { return Definition; }
+	void SetDefinition(UEGT_ParcelDefinition* InDefinition) { Definition = InDefinition; }
+
 	//~ Begin IInteractable
 	virtual bool CanInteract_Implementation(AActor* Interactor) override;
 	virtual void OnInteract_Implementation(AActor* Interactor) override;
@@ -69,7 +74,11 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> ParcelMesh;
-	
+
+	// Description sheet of this parcel
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Parcel", meta = (ExposeOnSpawn = "true"))
+	TObjectPtr<UEGT_ParcelDefinition> Definition;
+
 	virtual void BeginPlay() override;
 
 #pragma region Interaction

@@ -6,6 +6,7 @@
 #include "EmbersGameplayTest.h"
 #include "InteractionComponent.h"
 #include "InteractionTypes.h"
+#include "Item/EGT_ParcelDefinition.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -38,6 +39,14 @@ AEGT_ParcelBase::AEGT_ParcelBase()
 void AEGT_ParcelBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Drafted at runtime so that every instance of the same definition gets its own weight
+	if (Definition)
+	{
+		const float MassKg = Definition->RollMassKg();
+		ParcelMesh->SetMassOverrideInKg(NAME_None, MassKg, true);
+		UE_LOG(LogEmbersGameplayTest, Verbose, TEXT("[Parcel_BeginPlay] '%s' (%s) drafted mass: %.1f kg"), *GetActorNameOrLabel(), *GetNameSafe(Definition), MassKg);
+	}
 
 	// Event called when a component hits (or is hit by) something solid
 	ParcelMesh->OnComponentHit.AddUniqueDynamic(this, &ThisClass::HandleParcelHit);
@@ -168,7 +177,7 @@ void AEGT_ParcelBase::SetInteractionEnabled(bool bEnabled)
 FEGT_ParcelInspectInfo AEGT_ParcelBase::GetInspectInfo() const
 {
 	FEGT_ParcelInspectInfo Info;
-	Info.DisplayName = FText::FromString(GetActorNameOrLabel());
+	Info.DisplayName = (Definition && !Definition->DisplayName.IsEmpty()) ? Definition->DisplayName : FText::FromString(GetActorNameOrLabel());
 	//Info.MassKg = ParcelMesh->GetMass(); // This warns that simulate physics is not enabled. Would require further investigation to see whether the new method to get mass is fine or not
 	Info.MassKg = ParcelMesh->CalculateMass();
 	
