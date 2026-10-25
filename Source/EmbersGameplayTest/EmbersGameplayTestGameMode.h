@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Item/EGT_StickerTypes.h"
 #include "EmbersGameplayTestGameMode.generated.h"
 
 /**
@@ -16,6 +17,15 @@ class AEmbersGameplayTestGameMode : public AGameModeBase
 
 public:
 	AEmbersGameplayTestGameMode();
+
+	/** Actual colour of a named sticker colour (magenta if unmapped) */
+	UFUNCTION(BlueprintPure, Category="Stickers")
+	FLinearColor GetStickerLinearColor(EEGT_StickerColor StickerColor) const;
+
+protected:
+	// Colour displayed for each named sticker colour
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Stickers")
+	TMap<EEGT_StickerColor, FLinearColor> StickerColors;
 };
 
 

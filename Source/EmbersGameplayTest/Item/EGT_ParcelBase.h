@@ -7,6 +7,7 @@
 #include "Interaction/Interactable.h"
 #include "EGT_ParcelBase.generated.h"
 
+class AEGT_Sticker;
 class UEGT_ParcelDefinition;
 class UInteractionComponent;
 class UStaticMeshComponent;
@@ -70,6 +71,9 @@ public:
 	UFUNCTION(BlueprintPure, Category="Parcel")
 	FEGT_ParcelInspectInfo GetInspectInfo() const;
 
+	UFUNCTION(BlueprintPure, Category="Parcel|Stickers")
+	const TArray<AEGT_Sticker*>& GetStickers() const { return Stickers; }
+
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
@@ -80,6 +84,22 @@ protected:
 	TObjectPtr<UEGT_ParcelDefinition> Definition;
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+#pragma region Stickers
+
+	// Spawns one sticker per color in the definition, on randomly picked sticker locations
+	void SpawnStickers();
+
+	// PROPERTIES
+	UPROPERTY(EditDefaultsOnly, Category="Parcel|Stickers")
+	TSubclassOf<AEGT_Sticker> StickerClass;
+
+	// Runtime
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<AEGT_Sticker>> Stickers;
+
+#pragma endregion
 
 #pragma region Interaction
 

@@ -7,7 +7,10 @@
 #include "InteractionComponent.h"
 #include "InteractionTypes.h"
 #include "Item/EGT_ParcelDefinition.h"
+#include "Item/EGT_Sticker.h"
+#include "Item/EGT_StickerLocationComponent.h"
 
+#include "Algo/RandomShuffle.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 
@@ -46,11 +49,86 @@ void AEGT_ParcelBase::BeginPlay()
 		const float MassKg = Definition->RollMassKg();
 		ParcelMesh->SetMassOverrideInKg(NAME_None, MassKg, true);
 		UE_LOG(LogEmbersGameplayTest, Verbose, TEXT("[Parcel_BeginPlay] '%s' (%s) drafted mass: %.1f kg"), *GetActorNameOrLabel(), *GetNameSafe(Definition), MassKg);
+
+		SpawnStickers();
 	}
 
 	// Event called when a component hits (or is hit by) something solid
 	ParcelMesh->OnComponentHit.AddUniqueDynamic(this, &ThisClass::HandleParcelHit);
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEGT_ParcelBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// Attached actors are not destroyed along with their parent
+	for (AEGT_Sticker* Sticker : Stickers)
+	{
+		if (IsValid(Sticker))
+		{
+			Sticker->Destroy();
+		}
+	}
+	Stickers.Reset();
+
+	Super::EndPlay(EndPlayReason);
+}
+
+#pragma region Stickers
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEGT_ParcelBase::SpawnStickers()
+{
+	const int32 RequestedCount = Definition->RollStickerCount();
+	if (RequestedCount <= 0)
+	{
+		return;
+	}
+
+	if (Definition->StickerColors.IsEmpty())
+	{
+		UE_LOG(LogEmbersGameplayTest, Warning, TEXT("[Parcel::Stickers] '%s' (%s) has no StickerColors to draft from: no sticker spawned"),
+			*GetActorNameOrLabel(), *GetNameSafe(Definition));
+		return;
+	}
+
+	if (!StickerClass)
+	{
+		UE_LOG(LogEmbersGameplayTest, Warning, TEXT("[Parcel::Stickers] '%s' has no StickerClass set: no sticker spawned"), *GetActorNameOrLabel());
+		return;
+	}
+
+	// Randomize so that stickers land on different faces from one instance to the other
+	TArray<UEGT_StickerLocationComponent*> Locations;
+	GetComponents<UEGT_StickerLocationComponent>(Locations);
+	Algo::RandomShuffle(Locations);
+
+	if (RequestedCount > Locations.Num())
+	{
+		UE_LOG(LogEmbersGameplayTest, Warning, TEXT("[Parcel::Stickers] '%s' (%s) drafted %d stickers but only has %d sticker locations. Additionnal stickers will be ignored"),
+			*GetActorNameOrLabel(), *GetNameSafe(Definition), RequestedCount, Locations.Num());
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	const int32 StickerCount = FMath::Min(RequestedCount, Locations.Num());
+	for (int32 Index = 0; Index < StickerCount; ++Index)
+	{
+		UEGT_StickerLocationComponent* Location = Locations[Index];
+		AEGT_Sticker* Sticker = GetWorld()->SpawnActor<AEGT_Sticker>(StickerClass, Location->GetComponentTransform(), SpawnParams);
+		if (!Sticker)
+		{
+			continue;
+		}
+
+		Sticker->AttachToComponent(Location, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		Sticker->SetStickerColor(Definition->RollStickerColor());
+		Stickers.Add(Sticker);
+	}
+}
+
+#pragma endregion
 
 #pragma region Interaction
 
