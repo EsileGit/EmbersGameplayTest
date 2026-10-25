@@ -19,6 +19,19 @@ class EMBERSGAMEPLAYTEST_API AEGT_HUD : public AHUD
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void DrawHUD() override;
+
+#pragma region Debug
+
+	// Lists the game mode's requests and their state on screen (toggled by EGT.Debug.Requests)
+	void DrawRequestsDebug();
+
+	// PROPERTIES
+	// Top-left corner of the requests debug list, in screen pixels
+	UPROPERTY(EditAnywhere, Category="Debug")
+	FVector2D RequestsDebugOrigin = FVector2D(20.0f, 150.0f);
+
+#pragma endregion
 
 	// PROPERTIES
 	// Root overlay widget

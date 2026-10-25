@@ -128,6 +128,20 @@ void AEGT_ParcelBase::SpawnStickers()
 	}
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+TArray<EEGT_StickerColor> AEGT_ParcelBase::GetStickerColors() const
+{
+	TArray<EEGT_StickerColor> Colors;
+	for (const AEGT_Sticker* Sticker : Stickers)
+	{
+		if (IsValid(Sticker))
+		{
+			Colors.Add(Sticker->GetStickerColor());
+		}
+	}
+	return Colors;
+}
+
 #pragma endregion
 
 #pragma region Interaction
@@ -249,6 +263,18 @@ void AEGT_ParcelBase::ConsumeItem()
 void AEGT_ParcelBase::SetInteractionEnabled(bool bEnabled)
 {
 	bInteractionEnabled = bEnabled;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEGT_ParcelBase::SetFrozen(bool bFrozen)
+{
+	if (bFrozen)
+	{
+		ParcelMesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+		ParcelMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+	}
+	ParcelMesh->SetSimulatePhysics(!bFrozen);
+	SetInteractionEnabled(!bFrozen);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

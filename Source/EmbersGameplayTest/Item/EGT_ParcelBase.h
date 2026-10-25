@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Interaction/Interactable.h"
+#include "Item/EGT_StickerTypes.h"
 #include "EGT_ParcelBase.generated.h"
 
 class AEGT_Sticker;
@@ -73,6 +74,13 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Parcel|Stickers")
 	const TArray<AEGT_Sticker*>& GetStickers() const { return Stickers; }
+
+	/** Get the colors of the stickers on this parcel */
+	UFUNCTION(BlueprintPure, Category="Parcel|Stickers")
+	TArray<EEGT_StickerColor> GetStickerColors() const;
+
+	UFUNCTION(BlueprintCallable, Category="Parcel")
+	void SetFrozen(bool bFrozen);
 
 
 protected:
