@@ -152,7 +152,7 @@ void AEGT_CounterDesk::DeliverParcel(AEGT_ParcelBase* Parcel)
 	}
 
 	const int32 RequestIndex = ActiveRequestIndex;
-	const int32 Points = GameMode->CompleteRequest(RequestIndex, true);
+	const int32 Points = GameMode->CompleteRequest(RequestIndex, true, Parcel->GetDamageState());
 	ActiveRequestIndex = INDEX_NONE;
 
 	OnRequestFulfilled(Parcel, *GameMode->GetRequest(RequestIndex), Points);

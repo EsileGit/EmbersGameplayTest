@@ -7,6 +7,7 @@
 #include "EmbersGameplayTestGameMode.h"
 #include "InteractionComponent.h"
 #include "InteractionTypes.h"
+#include "Item/EGT_DamageDecalComponent.h"
 #include "Item/EGT_ParcelDefinition.h"
 #include "Item/EGT_Sticker.h"
 #include "Item/EGT_StickerLocationComponent.h"
@@ -43,6 +44,9 @@ AEGT_ParcelBase::AEGT_ParcelBase()
 void AEGT_ParcelBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	Integrity = MaxIntegrity;
+	RefreshDamageDecals();
 
 	// Drafted at runtime so that every instance of the same definition gets its own weight
 	if (Definition)
@@ -316,7 +320,11 @@ FEGT_ParcelInspectInfo AEGT_ParcelBase::GetInspectInfo() const
 	Info.DisplayName = (Definition && !Definition->DisplayName.IsEmpty()) ? Definition->DisplayName : FText::FromString(GetActorNameOrLabel());
 	//Info.MassKg = ParcelMesh->GetMass(); // This warns that simulate physics is not enabled. Would require further investigation to see whether the new method to get mass is fine or not
 	Info.MassKg = ParcelMesh->CalculateMass();
-	
+	Info.DamageState = DamageState;
+	Info.IntegrityRatio = GetIntegrityRatio();
+	Info.FragilityPercent = FragilityPercent;
+	Info.StickerColors = GetStickerColors();
+
 	return Info;
 }
 
@@ -389,6 +397,57 @@ void AEGT_ParcelBase::HandleParcelHit(UPrimitiveComponent* HitComponent, AActor*
 		*Hit.ImpactNormal.ToCompactString());
 
 	OnParcelImpact(ImpactSpeed, ImpactIntensity, Hit);
+	ApplyImpactDamage(ImpactSpeed, Hit);
+}
+
+#pragma endregion
+
+#pragma region Damage
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEGT_ParcelBase::ApplyImpactDamage(float ImpactSpeed, const FHitResult& Hit)
+{
+	if (ImpactSpeed < DamageMinSpeed || DamageState == EEGT_ParcelDamageState::Broken)
+	{
+		return;
+	}
+
+	const float BaseDamage = FMath::GetMappedRangeValueClamped(
+		FVector2f(DamageMinSpeed, DamageMaxSpeed), FVector2f(MinDamagePerHit, MaxDamagePerHit), ImpactSpeed);
+	const float Damage = BaseDamage * (1.0f + FragilityPercent / 100.0f);
+	Integrity = FMath::Clamp(Integrity - Damage, 0.0f, MaxIntegrity);
+
+	UE_LOG(LogEmbersGameplayTest, Log, TEXT("[ParcelDamage] '%s' took %.1f damage (base %.1f, fragility %.0f%%) at %.0f cm/s | Integrity: %.1f / %.1f"),
+		*GetActorNameOrLabel(), Damage, BaseDamage, FragilityPercent, ImpactSpeed, Integrity, MaxIntegrity);
+
+	OnParcelDamaged(Damage, Integrity, Hit);
+
+	const AEmbersGameplayTestGameMode* GameMode = GetWorld()->GetAuthGameMode<AEmbersGameplayTestGameMode>();
+	if (!GameMode)
+	{
+		return;
+	}
+
+	const EEGT_ParcelDamageState OldState = DamageState;
+	DamageState = GameMode->GetDamageStateForIntegrity(GetIntegrityRatio());
+	if (DamageState != OldState)
+	{
+		UE_LOG(LogEmbersGameplayTest, Log, TEXT("[ParcelDamage] '%s' is now %s"), *GetActorNameOrLabel(), *UEnum::GetValueAsString(DamageState));
+		RefreshDamageDecals();
+		// It's possible to "skip" a state, they are not sequential. Reaction should be based on current state and not previous one.
+		OnDamageStateChanged(DamageState, OldState);
+	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEGT_ParcelBase::RefreshDamageDecals()
+{
+	TArray<UEGT_DamageDecalComponent*> DamageDecals;
+	GetComponents<UEGT_DamageDecalComponent>(DamageDecals);
+	for (UEGT_DamageDecalComponent* DamageDecal : DamageDecals)
+	{
+		DamageDecal->RefreshForDamageState(DamageState);
+	}
 }
 
 #pragma endregion

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Interaction/Interactable.h"
+#include "Item/EGT_ParcelDamageTypes.h"
 #include "Item/EGT_StickerTypes.h"
 #include "EGT_ParcelBase.generated.h"
 
@@ -26,6 +27,19 @@ struct FEGT_ParcelInspectInfo
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel", meta = (Units = "kg"))
 	float MassKg = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel")
+	EEGT_ParcelDamageState DamageState = EEGT_ParcelDamageState::Intact;
+
+	// 1 = intact, 0 = no integrity left
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel")
+	float IntegrityRatio = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel", meta = (Units = "Percent"))
+	float FragilityPercent = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel")
+	TArray<EEGT_StickerColor> StickerColors;
 };
 
 /**
@@ -81,6 +95,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Parcel")
 	void SetFrozen(bool bFrozen);
+
+	UFUNCTION(BlueprintPure, Category="Parcel|Damage")
+	float GetIntegrity() const { return Integrity; }
+
+	// 1 = intact, 0 = no integrity left
+	UFUNCTION(BlueprintPure, Category="Parcel|Damage")
+	float GetIntegrityRatio() const { return MaxIntegrity > 0.0f ? Integrity / MaxIntegrity : 0.0f; }
+
+	UFUNCTION(BlueprintPure, Category="Parcel|Damage")
+	EEGT_ParcelDamageState GetDamageState() const { return DamageState; }
 
 
 protected:
@@ -148,8 +172,48 @@ protected:
 
 #pragma endregion
 
+#pragma region Damage
+
+	void ApplyImpactDamage(float ImpactSpeed, const FHitResult& Hit);
+
+	// Shows the damage decals matching the current damage state
+	void RefreshDamageDecals();
+
+	// PROPERTIES
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel|Damage", meta = (ClampMin = 1))
+	float MaxIntegrity = 100.0f;
+
+	// Extra damage taken: negative values can work
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel|Damage", meta = (Units = "Percent"))
+	float FragilityPercent = 0.0f;
+
+	// Impact speed from which the parcel takes damage (~1m fall). Slower impacts are cosmetic only
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel|Damage", meta = (ClampMin = 0, Units = "CentimetersPerSecond"))
+	float DamageMinSpeed = 450.0f;
+
+	// Impact speed dealing MaxDamagePerHit (~5m fall)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel|Damage", meta = (ClampMin = 0, Units = "CentimetersPerSecond"))
+	float DamageMaxSpeed = 1000.0f;
+
+	// Damage dealt at DamageMinSpeed, before fragility
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel|Damage", meta = (ClampMin = 0))
+	float MinDamagePerHit = 5.0f;
+
+	// Damage dealt at DamageMaxSpeed and above, before fragility
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parcel|Damage", meta = (ClampMin = 0))
+	float MaxDamagePerHit = 50.0f;
+
+	// Runtime
+	UPROPERTY(Transient, VisibleInstanceOnly, Category="Parcel|Damage")
+	float Integrity = 0.0f;
+
+	UPROPERTY(Transient, VisibleInstanceOnly, Category="Parcel|Damage")
+	EEGT_ParcelDamageState DamageState = EEGT_ParcelDamageState::Intact;
+
+#pragma endregion
+
 #pragma region GameFeel
-	
+
 	// Blueprint reactions hook (for cosmetic)
 	UFUNCTION(BlueprintImplementableEvent, Category="Parcel")
 	void OnParcelGrabbed(AActor* Carrier);
@@ -159,6 +223,13 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category="Parcel")
 	void OnParcelImpact(float ImpactSpeed, float ImpactIntensity, const FHitResult& Hit);
+
+	// Called after OnParcelImpact when the impact was strong enough to damage the parcel
+	UFUNCTION(BlueprintImplementableEvent, Category="Parcel")
+	void OnParcelDamaged(float Damage, float NewIntegrity, const FHitResult& Hit);
+
+	UFUNCTION(BlueprintImplementableEvent, Category="Parcel")
+	void OnDamageStateChanged(EEGT_ParcelDamageState NewState, EEGT_ParcelDamageState OldState);
 
 	
 	// Callback triggered by the parcel mesh's physics hits

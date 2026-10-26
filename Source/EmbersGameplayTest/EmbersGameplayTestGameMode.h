@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Gameplay/EGT_RequestTypes.h"
+#include "Item/EGT_ParcelDamageTypes.h"
 #include "Item/EGT_StickerTypes.h"
 #include "EmbersGameplayTestGameMode.generated.h"
 
@@ -60,9 +61,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Requests")
 	int32 DraftRequest();
 
-	// Closes an InProgress request. On success, it grants its current points. Returns the points granted
+	// Closes an InProgress request. On success, it grants its current points, scaled by the delivered parcel's damage state.
+	// Returns the points granted
 	UFUNCTION(BlueprintCallable, Category="Requests")
-	int32 CompleteRequest(int32 RequestIndex, bool bSuccess);
+	int32 CompleteRequest(int32 RequestIndex, bool bSuccess, EEGT_ParcelDamageState DamageState = EEGT_ParcelDamageState::Intact);
 
 	// Picks a random Available, non-doable request with 1 to MaxStickerCount stickers and marks it doable.
 	// Returns its index, or INDEX_NONE if none fits
@@ -79,6 +81,14 @@ public:
 	// Fired every time the score changes
 	UPROPERTY(BlueprintAssignable, Category="Requests")
 	FOnScoreChanged OnScoreChanged;
+
+#pragma endregion
+
+#pragma region Damage
+
+	// Damage state of a parcel with this integrity (0-1)
+	UFUNCTION(BlueprintPure, Category="Parcel|Damage")
+	EEGT_ParcelDamageState GetDamageStateForIntegrity(float IntegrityRatio) const;
 
 #pragma endregion
 
@@ -129,6 +139,24 @@ protected:
 
 	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category="Requests")
 	int32 Score = 0;
+
+#pragma endregion
+
+#pragma region Damage
+
+	// A parcel is in a damage state when its integrity is at or below that state's threshold (the worst state wins)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Parcel|Damage", meta = (ClampMin = 0, ClampMax = 100, Units = "Percent"))
+	float DentedThresholdPercent = 75.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Parcel|Damage", meta = (ClampMin = 0, ClampMax = 100, Units = "Percent"))
+	float DamagedThresholdPercent = 40.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Parcel|Damage", meta = (ClampMin = 0, ClampMax = 100, Units = "Percent"))
+	float BrokenThresholdPercent = 0.0f;
+
+	// Map: damage state of the parcel -> coefficient applied to the request's points (negative allowed => penalty)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Requests|Points")
+	TMap<EEGT_ParcelDamageState, float> DamagePointsMultipliers;
 
 #pragma endregion
 

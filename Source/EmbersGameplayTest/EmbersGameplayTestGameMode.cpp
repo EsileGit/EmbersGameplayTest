@@ -19,6 +19,11 @@ AEmbersGameplayTestGameMode::AEmbersGameplayTestGameMode()
 	StickerColors.Add(EEGT_StickerColor::Yellow, FLinearColor());
 	StickerColors.Add(EEGT_StickerColor::Purple, FLinearColor());
 	StickerColors.Add(EEGT_StickerColor::Orange, FLinearColor());
+
+	DamagePointsMultipliers.Add(EEGT_ParcelDamageState::Intact, 1.0f);
+	DamagePointsMultipliers.Add(EEGT_ParcelDamageState::Dented, 0.75f);
+	DamagePointsMultipliers.Add(EEGT_ParcelDamageState::Damaged, 0.4f);
+	DamagePointsMultipliers.Add(EEGT_ParcelDamageState::Broken, 0.0f);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -161,7 +166,7 @@ void AEmbersGameplayTestGameMode::ReleaseRequestForParcel(int32 RequestIndex)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-int32 AEmbersGameplayTestGameMode::CompleteRequest(int32 RequestIndex, bool bSuccess)
+int32 AEmbersGameplayTestGameMode::CompleteRequest(int32 RequestIndex, bool bSuccess, EEGT_ParcelDamageState DamageState)
 {
 	if (!Requests.IsValidIndex(RequestIndex) || Requests[RequestIndex].Status != EEGT_RequestStatus::InProgress)
 	{
@@ -171,7 +176,9 @@ int32 AEmbersGameplayTestGameMode::CompleteRequest(int32 RequestIndex, bool bSuc
 
 	FEGT_Request& Request = Requests[RequestIndex];
 	Request.Status = bSuccess ? EEGT_RequestStatus::Succeeded : EEGT_RequestStatus::Failed;
-	Request.AwardedPoints = bSuccess ? GetRequestCurrentPoints(Request) : 0;
+	const float* FoundMultiplier = DamagePointsMultipliers.Find(DamageState);
+	const float DamageMultiplier = FoundMultiplier ? *FoundMultiplier : 1.0f;
+	Request.AwardedPoints = bSuccess ? FMath::RoundToInt(GetRequestCurrentPoints(Request) * DamageMultiplier) : 0;
 
 	if (Request.AwardedPoints != 0)
 	{
@@ -179,9 +186,32 @@ int32 AEmbersGameplayTestGameMode::CompleteRequest(int32 RequestIndex, bool bSuc
 		OnScoreChanged.Broadcast(Score);
 	}
 
-	UE_LOG(LogEmbersGameplayTest, Log, TEXT("[GameMode] Request %d %s: +%d pts (score: %d)"), RequestIndex,
-		bSuccess ? TEXT("succeeded") : TEXT("failed"), Request.AwardedPoints, Score);
+	UE_LOG(LogEmbersGameplayTest, Log, TEXT("[GameMode] Request %d %s: %+d pts (damage: %s, x%.2f) (score: %d)"), RequestIndex,
+		bSuccess ? TEXT("succeeded") : TEXT("failed"), Request.AwardedPoints, *UEnum::GetValueAsString(DamageState), DamageMultiplier, Score);
 	return Request.AwardedPoints;
+}
+
+#pragma endregion
+
+#pragma region Damage
+
+// ---------------------------------------------------------------------------------------------------------------------
+EEGT_ParcelDamageState AEmbersGameplayTestGameMode::GetDamageStateForIntegrity(float IntegrityRatio) const
+{
+	const float IntegrityPercent = IntegrityRatio * 100.0f;
+	if (IntegrityPercent <= BrokenThresholdPercent)
+	{
+		return EEGT_ParcelDamageState::Broken;
+	}
+	if (IntegrityPercent <= DamagedThresholdPercent)
+	{
+		return EEGT_ParcelDamageState::Damaged;
+	}
+	if (IntegrityPercent <= DentedThresholdPercent)
+	{
+		return EEGT_ParcelDamageState::Dented;
+	}
+	return EEGT_ParcelDamageState::Intact;
 }
 
 #pragma endregion
