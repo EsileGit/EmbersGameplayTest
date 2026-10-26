@@ -20,7 +20,10 @@ AEmbersGameplayTestGameMode::AEmbersGameplayTestGameMode()
 void AEmbersGameplayTestGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
+	// Beware of a potential race condition here: at the moment, no parcels are created at level begin (contrary to Cat Mail and Co.)
+	// so it's ok that the init of requests is done in a begin play. If anotheractor were to neeed access to the requests
+	// during its own begin play, this code shall be moved somewhere earlier
 	CreateRandomRequests();
 }
 
@@ -103,6 +106,43 @@ int32 AEmbersGameplayTestGameMode::DraftRequest()
 	Requests[RequestIndex].Status = EEGT_RequestStatus::InProgress;
 	StartRequest(RequestIndex);
 	return RequestIndex;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+int32 AEmbersGameplayTestGameMode::ClaimRequestForParcel(int32 MaxStickerCount)
+{
+	TArray<int32> EligibleIndices;
+	for (int32 RequestIndex = 0; RequestIndex < Requests.Num(); ++RequestIndex)
+	{
+		const FEGT_Request& CurrentRequest = Requests[RequestIndex];
+		const int32 StickerCount = CurrentRequest.RequiredStickers.Num();
+		const bool bCanStillBeDone = CurrentRequest.Status == EEGT_RequestStatus::InProgress || CurrentRequest.Status == EEGT_RequestStatus::Available;
+		if (bCanStillBeDone && 
+			!CurrentRequest.bIsDoable && // We mark the requests so that different spawn with policy FromLevelRequirement don't overlap
+			StickerCount > 0 && 
+			StickerCount <= MaxStickerCount)
+		{
+			EligibleIndices.Add(RequestIndex);
+		}
+	}
+
+	if (EligibleIndices.IsEmpty())
+	{
+		return INDEX_NONE;
+	}
+
+	const int32 RequestIndex = EligibleIndices[FMath::RandRange(0, EligibleIndices.Num() - 1)];
+	Requests[RequestIndex].bIsDoable = true;
+	return RequestIndex;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEmbersGameplayTestGameMode::ReleaseRequestForParcel(int32 RequestIndex)
+{
+	if (Requests.IsValidIndex(RequestIndex))
+	{
+		Requests[RequestIndex].bIsDoable = false;
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 #include "Item/EGT_Sticker.h"
 
 #include "EmbersGameplayTest.h"
-#include "EmbersGameplayTestGameMode.h"
+#include "Gameplay/EGT_GameplayLibrary.h"
 
 #include "Components/DecalComponent.h"
 #include "Engine/World.h"
@@ -27,15 +27,7 @@ void AEGT_Sticker::SetStickerColor(EEGT_StickerColor InColor)
 {
 	StickerColor = InColor;
 
-	FLinearColor LinearColor = FLinearColor(1.0f, 0.0f, 1.0f);
-	if (const AEmbersGameplayTestGameMode* GameMode = GetWorld()->GetAuthGameMode<AEmbersGameplayTestGameMode>())
-	{
-		LinearColor = GameMode->GetStickerLinearColor(InColor);
-	}
-	else
-	{
-		UE_LOG(LogEmbersGameplayTest, Warning, TEXT("[Sticker] No valid gamemode found"));
-	}
+	const FLinearColor LinearColor = UEGT_GameplayLibrary::GetStickerLinearColor(this, InColor);
 
 	UMaterialInstanceDynamic* DynamicMaterial = StickerDecal->CreateDynamicMaterialInstance();
 	if (DynamicMaterial)

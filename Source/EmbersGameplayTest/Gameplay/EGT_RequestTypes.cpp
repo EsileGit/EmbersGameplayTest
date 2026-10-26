@@ -20,6 +20,17 @@ int32 FEGT_Request::GetPointsAt(double Timestamp) const
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+float FEGT_Request::GetRemainingTimeAt(double Timestamp) const
+{
+	if (!HasStarted())
+	{
+		return MaxTime;
+	}
+
+	return FMath::Max(0.0f, MaxTime - static_cast<float>(Timestamp - StartTimestamp));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 bool FEGT_Request::MatchesStickers(const TArray<EEGT_StickerColor>& Stickers) const
 {
 	if (Stickers.Num() != RequiredStickers.Num())
@@ -46,10 +57,5 @@ void FEGT_Request::MakeRequestFromDefinition()
 	}
 
 	// Drafts a number of stickers between min and max and among definition possible colors
-	const int32 StickerCount = ParcelDefinition->RollStickerCount();
-	RequiredStickers.Reset(StickerCount);
-	for (int32 StickerIndex = 0; StickerIndex < StickerCount; ++StickerIndex)
-	{
-		RequiredStickers.Add(ParcelDefinition->RollStickerColor());
-	}
+	RequiredStickers = ParcelDefinition->RollStickerColors();
 }

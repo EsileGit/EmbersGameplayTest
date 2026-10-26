@@ -5,6 +5,7 @@
 
 #include "EmbersGameplayTest.h"
 #include "EmbersGameplayTestGameMode.h"
+#include "Gameplay/EGT_GameplayLibrary.h"
 #include "Item/EGT_ParcelDefinition.h"
 
 #include "Blueprint/UserWidget.h"
@@ -123,6 +124,11 @@ void AEGT_HUD::DrawRequestsDebug()
 			StateColor = bExpired ? FLinearColor::Red : FLinearColor::Green;
 		}
 
+		if (Request.bIsDoable)
+		{
+			StateLine += TEXT("  DOABLE");
+		}
+
 		if (!Request.bIsCustomRequest)
 		{
 			StateLine += FString::Printf(TEXT("  (from %s)"), *GetNameSafe(Request.ParcelDefinition));
@@ -135,7 +141,7 @@ void AEGT_HUD::DrawRequestsDebug()
 		float StickerX = X + 16.0f;
 		for (const EEGT_StickerColor StickerColor : Request.RequiredStickers)
 		{
-			DrawRect(GameMode->GetStickerLinearColor(StickerColor), StickerX, Y + 3.0f, StickerSize, StickerSize);
+			DrawRect(UEGT_GameplayLibrary::GetStickerLinearColor(this, StickerColor), StickerX, Y + 3.0f, StickerSize, StickerSize);
 			StickerX += StickerSize + 4.0f;
 
 			const FString StickerName = UEnum::GetDisplayValueAsText(StickerColor).ToString();

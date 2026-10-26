@@ -96,8 +96,11 @@ protected:
 
 #pragma region Stickers
 
-	// Spawns one sticker per color in the definition, on randomly picked sticker locations
+	// Spawns one sticker per picked color, on randomly picked sticker locations
 	void SpawnStickers();
+
+	// Colors for this parcel's stickers, according to the definition's spawn policy
+	TArray<EEGT_StickerColor> PickStickerColors(int32 LocationCount);
 
 	// PROPERTIES
 	UPROPERTY(EditDefaultsOnly, Category="Parcel|Stickers")
@@ -106,6 +109,10 @@ protected:
 	// Runtime
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<AEGT_Sticker>> Stickers;
+
+	// Request this parcel was made for (FromLevelRequirement policy). This relies on the Request list to never reorder. Probably best to use ID...
+	UPROPERTY(Transient, VisibleInstanceOnly, Category="Parcel|Stickers")
+	int32 ClaimedRequestIndex = INDEX_NONE;
 
 #pragma endregion
 

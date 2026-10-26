@@ -10,6 +10,10 @@
 class AEGT_ParcelBase;
 class AEmbersGameplayTestGameMode;
 class UBoxComponent;
+class UWidgetComponent;
+
+/** Broadcast when a request starts or stops being pending on the desk */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeskRequestChanged, bool, bHasActiveRequest);
 
 /**
  * Counter where requests are drafted, cancelled and delivered. Holds at most one request at a time.
@@ -36,6 +40,14 @@ public:
 	// Returns false if no request is pending on this desk
 	UFUNCTION(BlueprintPure, Category="Desk")
 	bool GetActiveRequest(FEGT_Request& OutRequest) const;
+
+	// Real-time state of the pending request. Returns false if no request is pending on this desk
+	UFUNCTION(BlueprintPure, Category="Desk")
+	bool GetActiveRequestProgress(float& OutRemainingTime, int32& OutCurrentPoints) const;
+
+	// Fired after a request is drafted, cancelled or fulfilled
+	UPROPERTY(BlueprintAssignable, Category="Desk")
+	FOnDeskRequestChanged OnActiveRequestChanged;
 
 protected:
 	virtual void BeginPlay() override;

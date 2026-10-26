@@ -8,6 +8,7 @@
 #include "Item/EGT_ParcelBase.h"
 
 #include "Components/BoxComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Engine/World.h"
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -54,6 +55,21 @@ bool AEGT_CounterDesk::GetActiveRequest(FEGT_Request& OutRequest) const
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+bool AEGT_CounterDesk::GetActiveRequestProgress(float& OutRemainingTime, int32& OutCurrentPoints) const
+{
+	const AEmbersGameplayTestGameMode* GameMode = GetGameMode();
+	const FEGT_Request* Request = GameMode ? GameMode->GetRequest(ActiveRequestIndex) : nullptr;
+	if (!Request)
+	{
+		return false;
+	}
+
+	OutRemainingTime = Request->GetRemainingTimeAt(GetWorld()->GetTimeSeconds());
+	OutCurrentPoints = GameMode->GetRequestCurrentPoints(*Request);
+	return true;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 bool AEGT_CounterDesk::TryDraftRequest()
 {
 	AEmbersGameplayTestGameMode* GameMode = GetGameMode();
@@ -71,6 +87,7 @@ bool AEGT_CounterDesk::TryDraftRequest()
 
 	ActiveRequestIndex = RequestIndex;
 	OnRequestDrafted(*GameMode->GetRequest(RequestIndex));
+	OnActiveRequestChanged.Broadcast(true);
 	return true;
 }
 
@@ -88,6 +105,7 @@ bool AEGT_CounterDesk::CancelActiveRequest()
 	ActiveRequestIndex = INDEX_NONE;
 
 	OnRequestCancelled(*GameMode->GetRequest(RequestIndex));
+	OnActiveRequestChanged.Broadcast(false);
 	return true;
 }
 
@@ -134,6 +152,7 @@ void AEGT_CounterDesk::DeliverParcel(AEGT_ParcelBase* Parcel)
 	ActiveRequestIndex = INDEX_NONE;
 
 	OnRequestFulfilled(Parcel, *GameMode->GetRequest(RequestIndex), Points);
+	OnActiveRequestChanged.Broadcast(false);
 
 	if (ConsumeDelay > 0.0f)
 	{

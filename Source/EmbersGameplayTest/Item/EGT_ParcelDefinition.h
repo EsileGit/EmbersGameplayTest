@@ -10,6 +10,20 @@
 class AEGT_ParcelBase;
 
 /**
+ * How a parcel's stickers are chosen at spawn
+ */
+UENUM(BlueprintType)
+enum class EEGT_StickerSpawnPolicy : uint8
+{
+	// Drafted among StickerColors
+	Random,
+	// Copied from a level request
+	FromLevelRequirement,
+	// Random or FromLevelRequirement
+	Alternate
+};
+
+/**
  * Description sheet of a parcel type:
  * the parcel BP to spawn
  * the range its weight is drafted from
@@ -30,6 +44,12 @@ public:
 	/** Drafts a color among StickerColors */
 	EEGT_StickerColor RollStickerColor() const;
 
+	/** Drafts a sticker count, then a color for each sticker */
+	TArray<EEGT_StickerColor> RollStickerColors() const;
+
+	/** Whether this spawn should copy a level request's stickers, according to StickerSpawnPolicy */
+	bool RollUsesLevelRequirement() const;
+
 	// PROPERTIES
 	// Name shown by the inspect UI
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Parcel")
@@ -42,6 +62,14 @@ public:
 	// Range the parcel's mass is drafted from at spawn
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Parcel", meta = (Units = "kg"))
 	FFloatInterval MassRangeKg = FFloatInterval(1.0f, 200.0f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Parcel|Stickers")
+	EEGT_StickerSpawnPolicy StickerSpawnPolicy = EEGT_StickerSpawnPolicy::Random;
+
+	// Probability that a spawn uses FromLevelRequirement instead of Random
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Parcel|Stickers", meta = (ClampMin = 0, ClampMax = 1,
+		EditCondition = "StickerSpawnPolicy == EEGT_StickerSpawnPolicy::Alternate", EditConditionHides))
+	float LevelRequirementChance = 0.5f;
 
 	// Colors the parcel's stickers are drafted from
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Parcel|Stickers")

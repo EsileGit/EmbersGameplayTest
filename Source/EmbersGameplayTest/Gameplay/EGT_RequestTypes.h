@@ -36,6 +36,9 @@ struct FEGT_Request
 	// Points this request is worth at Timestamp, going linearly from MaxPoints to MinPoints over MaxTime
 	int32 GetPointsAt(double Timestamp) const;
 
+	// Time left at Timestamp before the request is only worth MinPoints (MaxTime if not started)
+	float GetRemainingTimeAt(double Timestamp) const;
+
 	// True if Stickers holds exactly the required colors, in any order
 	bool MatchesStickers(const TArray<EEGT_StickerColor>& Stickers) const;
 
@@ -67,6 +70,10 @@ struct FEGT_Request
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category="Request")
 	EEGT_RequestStatus Status = EEGT_RequestStatus::Available;
+
+	// A parcel was spawned with this request's stickers (FromLevelRequirement policy), so no other parcel claims it
+	UPROPERTY(Transient, BlueprintReadOnly, Category="Request")
+	bool bIsDoable = false;
 
 	// Points granted when the request was completed (0 if failed)
 	UPROPERTY(Transient, BlueprintReadOnly, Category="Request")

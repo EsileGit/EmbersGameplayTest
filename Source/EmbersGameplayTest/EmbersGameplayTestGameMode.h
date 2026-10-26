@@ -51,6 +51,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Requests")
 	int32 CompleteRequest(int32 RequestIndex, bool bSuccess);
 
+	// Picks a random Available, non-doable request with 1 to MaxStickerCount stickers and marks it doable.
+	// Returns its index, or INDEX_NONE if none fits
+	int32 ClaimRequestForParcel(int32 MaxStickerCount);
+
+	// The parcel made for this request is gone: another parcel can be made for it (if it's still available). 
+	// This is to prevent cases where a Parcel meant for Request A is used (successfully) for Request B, making Request A
+	// not guaranted doable.
+	void ReleaseRequestForParcel(int32 RequestIndex);
+
 	UFUNCTION(BlueprintPure, Category="Requests")
 	int32 GetScore() const { return Score; }
 

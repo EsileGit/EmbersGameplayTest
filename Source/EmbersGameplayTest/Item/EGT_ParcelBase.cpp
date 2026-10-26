@@ -4,6 +4,7 @@
 #include "Item/EGT_ParcelBase.h"
 
 #include "EmbersGameplayTest.h"
+#include "EmbersGameplayTestGameMode.h"
 #include "InteractionComponent.h"
 #include "InteractionTypes.h"
 #include "Item/EGT_ParcelDefinition.h"
@@ -70,6 +71,16 @@ void AEGT_ParcelBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	Stickers.Reset();
 
+	// Whether delivered elsewhere or lost, this parcel no longer answers its request: another one can be made for it
+	if (ClaimedRequestIndex != INDEX_NONE)
+	{
+		if (AEmbersGameplayTestGameMode* GameMode = GetWorld()->GetAuthGameMode<AEmbersGameplayTestGameMode>())
+		{
+			GameMode->ReleaseRequestForParcel(ClaimedRequestIndex);
+		}
+		ClaimedRequestIndex = INDEX_NONE;
+	}
+
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -78,19 +89,6 @@ void AEGT_ParcelBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 // ---------------------------------------------------------------------------------------------------------------------
 void AEGT_ParcelBase::SpawnStickers()
 {
-	const int32 RequestedCount = Definition->RollStickerCount();
-	if (RequestedCount <= 0)
-	{
-		return;
-	}
-
-	if (Definition->StickerColors.IsEmpty())
-	{
-		UE_LOG(LogEmbersGameplayTest, Warning, TEXT("[Parcel::Stickers] '%s' (%s) has no StickerColors to draft from: no sticker spawned"),
-			*GetActorNameOrLabel(), *GetNameSafe(Definition));
-		return;
-	}
-
 	if (!StickerClass)
 	{
 		UE_LOG(LogEmbersGameplayTest, Warning, TEXT("[Parcel::Stickers] '%s' has no StickerClass set: no sticker spawned"), *GetActorNameOrLabel());
@@ -101,6 +99,13 @@ void AEGT_ParcelBase::SpawnStickers()
 	TArray<UEGT_StickerLocationComponent*> Locations;
 	GetComponents<UEGT_StickerLocationComponent>(Locations);
 	Algo::RandomShuffle(Locations);
+
+	const TArray<EEGT_StickerColor> Colors = PickStickerColors(Locations.Num());
+	const int32 RequestedCount = Colors.Num();
+	if (RequestedCount <= 0)
+	{
+		return;
+	}
 
 	if (RequestedCount > Locations.Num())
 	{
@@ -123,9 +128,36 @@ void AEGT_ParcelBase::SpawnStickers()
 		}
 
 		Sticker->AttachToComponent(Location, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-		Sticker->SetStickerColor(Definition->RollStickerColor());
+		Sticker->SetStickerColor(Colors[Index]);
 		Stickers.Add(Sticker);
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+TArray<EEGT_StickerColor> AEGT_ParcelBase::PickStickerColors(int32 LocationCount)
+{
+	if (Definition->RollUsesLevelRequirement())
+	{
+		AEmbersGameplayTestGameMode* GameMode = GetWorld()->GetAuthGameMode<AEmbersGameplayTestGameMode>();
+		const int32 RequestIndex = GameMode ? GameMode->ClaimRequestForParcel(LocationCount) : INDEX_NONE;
+		if (const FEGT_Request* Request = GameMode ? GameMode->GetRequest(RequestIndex) : nullptr)
+		{
+			UE_LOG(LogEmbersGameplayTest, Verbose, TEXT("[Parcel::Stickers] '%s' (%s) made for request %d"),
+				*GetActorNameOrLabel(), *GetNameSafe(Definition), RequestIndex);
+			ClaimedRequestIndex = RequestIndex;
+			return Request->RequiredStickers;
+		}
+
+		UE_LOG(LogEmbersGameplayTest, Verbose, TEXT("[Parcel::Stickers] '%s' (%s) found no request to be made for: falling back to random stickers"),
+			*GetActorNameOrLabel(), *GetNameSafe(Definition));
+	}
+
+	if (Definition->StickerColors.IsEmpty())
+	{
+		UE_LOG(LogEmbersGameplayTest, Warning, TEXT("[Parcel::Stickers] '%s' (%s) has no StickerColors to draft from: no sticker spawned"),
+			*GetActorNameOrLabel(), *GetNameSafe(Definition));
+	}
+	return Definition->RollStickerColors();
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
