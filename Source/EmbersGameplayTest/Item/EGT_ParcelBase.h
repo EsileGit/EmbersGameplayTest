@@ -11,6 +11,7 @@
 
 class AEGT_Sticker;
 class UEGT_ParcelDefinition;
+class UEGT_SnapSpotComponent;
 class UInteractionComponent;
 class UStaticMeshComponent;
 
@@ -106,6 +107,15 @@ public:
 	UFUNCTION(BlueprintPure, Category="Parcel|Damage")
 	EEGT_ParcelDamageState GetDamageState() const { return DamageState; }
 
+	// Teleports the parcel so that its snap attach point lies on the spot's arrow, and stops it
+	void SnapTo(UEGT_SnapSpotComponent* Spot);
+
+	// Spot this parcel was snapped on, if it still lies on it
+	UFUNCTION(BlueprintPure, Category="Parcel|Snap")
+	UEGT_SnapSpotComponent* GetSnapSpot() const;
+
+	// Only clears if Spot is the current one
+	void ClearSnapSpot(const UEGT_SnapSpotComponent* Spot);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
@@ -212,6 +222,14 @@ protected:
 
 #pragma endregion
 
+#pragma region Snapping
+
+	// Runtime
+	UPROPERTY(Transient, VisibleInstanceOnly, Category="Parcel|Snap")
+	TWeakObjectPtr<UEGT_SnapSpotComponent> CurrentSnapSpot;
+
+#pragma endregion
+
 #pragma region GameFeel
 
 	// Blueprint reactions hook (for cosmetic)
@@ -230,6 +248,9 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category="Parcel")
 	void OnDamageStateChanged(EEGT_ParcelDamageState NewState, EEGT_ParcelDamageState OldState);
+
+	UFUNCTION(BlueprintImplementableEvent, Category="Parcel")
+	void OnParcelSnapped(UEGT_SnapSpotComponent* Spot);
 
 	
 	// Callback triggered by the parcel mesh's physics hits

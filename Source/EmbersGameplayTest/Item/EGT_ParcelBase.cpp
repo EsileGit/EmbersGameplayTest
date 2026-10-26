@@ -9,6 +9,8 @@
 #include "InteractionTypes.h"
 #include "Item/EGT_DamageDecalComponent.h"
 #include "Item/EGT_ParcelDefinition.h"
+#include "Gameplay/EGT_SnapSpotComponent.h"
+#include "Item/EGT_SnapAttachPointComponent.h"
 #include "Item/EGT_Sticker.h"
 #include "Item/EGT_StickerLocationComponent.h"
 
@@ -207,6 +209,9 @@ void AEGT_ParcelBase::OnInteract_Implementation(AActor* Interactor)
 
 	HoldingInteractionComponent = InteractionComponent;
 	HoldingInteractionComponent->OnHeldItemChanged.AddUniqueDynamic(this, &ThisClass::HandleHeldItemChanged);
+
+	// Taken off its spot: free to snap anywhere once dropped
+	CurrentSnapSpot.Reset();
 
 	// physics has to be off before GrabItem attaches the parcel to the camera.
 	// Physics only collision: the carrier's movement sweep and the interaction trace ignore the held parcel,
@@ -447,6 +452,61 @@ void AEGT_ParcelBase::RefreshDamageDecals()
 	for (UEGT_DamageDecalComponent* DamageDecal : DamageDecals)
 	{
 		DamageDecal->RefreshForDamageState(DamageState);
+	}
+}
+
+#pragma endregion
+
+#pragma region Snapping
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEGT_ParcelBase::SnapTo(UEGT_SnapSpotComponent* Spot)
+{
+	if (!Spot)
+	{
+		return;
+	}
+
+	// Set before moving: the teleport can cross a neighbor spot's zone, which must not steal this parcel
+	CurrentSnapSpot = Spot;
+
+	const USceneComponent* AttachPoint = FindComponentByClass<UEGT_SnapAttachPointComponent>();
+	if (!AttachPoint)
+	{
+		UE_LOG(LogEmbersGameplayTest, Verbose, TEXT("[Parcel::Snap] '%s' has no SnapAttachPoint: snapping by its pivot"), *GetActorNameOrLabel());
+		AttachPoint = GetRootComponent();
+	}
+
+	// Rotation bringing the attach point onto the spot's arrow, applied to the whole actor around the attach point (scale agnostic)
+	const FQuat DeltaRotation = Spot->GetComponentQuat() * AttachPoint->GetComponentQuat().Inverse();
+	const FVector AttachOffset = AttachPoint->GetComponentLocation() - GetActorLocation();
+	const FVector NewLocation = Spot->GetComponentLocation() - DeltaRotation.RotateVector(AttachOffset);
+	const FQuat NewRotation = DeltaRotation * GetActorQuat();
+
+	SetActorLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
+
+	// Stopped dead: the parcel then settles on the shelf way below the impact speeds, so snapping never damages it
+	ParcelMesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+	ParcelMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+
+	UE_LOG(LogEmbersGameplayTest, Log, TEXT("[Parcel::Snap] '%s' snapped on '%s' (%s)"),
+		*GetActorNameOrLabel(), *GetNameSafe(Spot), *GetNameSafe(Spot->GetOwner()));
+
+	OnParcelSnapped(Spot);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+UEGT_SnapSpotComponent* AEGT_ParcelBase::GetSnapSpot() const
+{
+	return CurrentSnapSpot.Get();
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEGT_ParcelBase::ClearSnapSpot(const UEGT_SnapSpotComponent* Spot)
+{
+	if (CurrentSnapSpot.Get() == Spot)
+	{
+		CurrentSnapSpot.Reset();
 	}
 }
 
