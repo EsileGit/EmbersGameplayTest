@@ -4,9 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
+#include "EmbersGameplayTestGameMode.h"
 #include "EGT_HUD.generated.h"
 
 class UUserWidget;
+class UEGT_BriefingWidget;
+class UEGT_ResultsWidget;
 
 /**
  * HUD class to bear all UI-related elements (more centralized than the PC)
@@ -30,6 +33,29 @@ protected:
 	// Top-left corner of the requests debug list, in screen pixels
 	UPROPERTY(EditAnywhere, Category="Debug")
 	FVector2D RequestsDebugOrigin = FVector2D(20.0f, 150.0f);
+
+#pragma endregion
+
+#pragma region LevelFlow
+
+	UFUNCTION()
+	void HandleLevelPhaseChanged(EEGT_LevelPhase NewPhase);
+
+	// PROPERTIES
+	// Rules screen, displayed until the level starts
+	UPROPERTY(EditAnywhere, Category="UI|Level Flow")
+	TSubclassOf<UEGT_BriefingWidget> BriefingWidgetClass;
+
+	// Score screen, displayed when the level timer runs out
+	UPROPERTY(EditAnywhere, Category="UI|Level Flow")
+	TSubclassOf<UEGT_ResultsWidget> ResultsWidgetClass;
+
+	// Runtime
+	UPROPERTY(Transient)
+	TObjectPtr<UEGT_BriefingWidget> BriefingWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UEGT_ResultsWidget> ResultsWidget;
 
 #pragma endregion
 

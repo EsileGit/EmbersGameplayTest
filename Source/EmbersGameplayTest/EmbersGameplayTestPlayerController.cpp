@@ -8,6 +8,8 @@
 #include "EmbersGameplayTestCameraManager.h"
 #include "Blueprint/UserWidget.h"
 #include "EmbersGameplayTest.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 
 AEmbersGameplayTestPlayerController::AEmbersGameplayTestPlayerController()
@@ -67,6 +69,33 @@ void AEmbersGameplayTestPlayerController::SetupInputComponent()
 		}
 	}
 	
+}
+
+void AEmbersGameplayTestPlayerController::SetPlayerFrozen(bool bFrozen)
+{
+	if (ACharacter* PlayerCharacter = GetCharacter())
+	{
+		if (bFrozen)
+		{
+			PlayerCharacter->DisableInput(this);
+			PlayerCharacter->GetCharacterMovement()->StopMovementImmediately();
+		}
+		else
+		{
+			PlayerCharacter->EnableInput(this);
+		}
+	}
+
+	if (bFrozen)
+	{
+		SetInputMode(FInputModeUIOnly());
+	}
+	else
+	{
+		SetInputMode(FInputModeGameOnly());
+	}
+
+	SetShowMouseCursor(bFrozen);
 }
 
 bool AEmbersGameplayTestPlayerController::ShouldUseTouchControls() const

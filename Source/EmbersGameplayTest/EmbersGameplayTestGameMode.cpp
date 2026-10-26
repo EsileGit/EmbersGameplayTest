@@ -3,8 +3,13 @@
 #include "EmbersGameplayTestGameMode.h"
 
 #include "EmbersGameplayTest.h"
+#include "EmbersGameplayTestPlayerController.h"
 
 #include "Gameplay/EGT_RequestDefinition.h"
+
+#include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 AEmbersGameplayTestGameMode::AEmbersGameplayTestGameMode()
 {
@@ -17,12 +22,22 @@ AEmbersGameplayTestGameMode::AEmbersGameplayTestGameMode()
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+void AEmbersGameplayTestGameMode::StartPlay()
+{
+	// Before other begin plays so that other actor created at the start see the correct phase (this avoids the potential race
+	// condition described just below in the BeginPlay).
+	SetLevelPhase(bIsGameLevel ? EEGT_LevelPhase::Briefing : EEGT_LevelPhase::Playing);
+
+	Super::StartPlay();
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 void AEmbersGameplayTestGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	// Beware of a potential race condition here: at the moment, no parcels are created at level begin (contrary to Cat Mail and Co.)
-	// so it's ok that the init of requests is done in a begin play. If anotheractor were to neeed access to the requests
+	// so it's ok that the init of requests is done in a begin play. If another actor were to need access to the requests
 	// during its own begin play, this code shall be moved somewhere earlier
 	CreateRandomRequests();
 }
@@ -167,6 +182,61 @@ int32 AEmbersGameplayTestGameMode::CompleteRequest(int32 RequestIndex, bool bSuc
 	UE_LOG(LogEmbersGameplayTest, Log, TEXT("[GameMode] Request %d %s: +%d pts (score: %d)"), RequestIndex,
 		bSuccess ? TEXT("succeeded") : TEXT("failed"), Request.AwardedPoints, Score);
 	return Request.AwardedPoints;
+}
+
+#pragma endregion
+
+#pragma region LevelFlow
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEmbersGameplayTestGameMode::SetLevelPhase(EEGT_LevelPhase NewPhase)
+{
+	LevelPhase = NewPhase;
+
+	// Pure solo game: the first player controller is the player
+	if (AEmbersGameplayTestPlayerController* PlayerController = GetWorld()->GetFirstPlayerController<AEmbersGameplayTestPlayerController>())
+	{
+		PlayerController->SetPlayerFrozen(NewPhase != EEGT_LevelPhase::Playing);
+	}
+
+	UE_LOG(LogEmbersGameplayTest, Log, TEXT("[GameMode] Level phase: %s"), *UEnum::GetValueAsString(NewPhase));
+	OnLevelPhaseChanged.Broadcast(NewPhase);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEmbersGameplayTestGameMode::StartLevel()
+{
+	if (LevelPhase != EEGT_LevelPhase::Briefing)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().SetTimer(LevelTimerHandle, this, &ThisClass::EndLevel, LevelDuration, false);
+	SetLevelPhase(EEGT_LevelPhase::Playing);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEmbersGameplayTestGameMode::EndLevel()
+{
+	SetLevelPhase(EEGT_LevelPhase::Ended);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEmbersGameplayTestGameMode::RestartLevel()
+{
+	UGameplayStatics::OpenLevel(this, FName(UGameplayStatics::GetCurrentLevelName(this)));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+float AEmbersGameplayTestGameMode::GetLevelRemainingTime() const
+{
+	if (LevelPhase == EEGT_LevelPhase::Briefing)
+	{
+		return LevelDuration;
+	}
+
+	// GetTimerRemaining returns -1 when the timer isn't running
+	return FMath::Max(GetWorldTimerManager().GetTimerRemaining(LevelTimerHandle), 0.0f);
 }
 
 #pragma endregion

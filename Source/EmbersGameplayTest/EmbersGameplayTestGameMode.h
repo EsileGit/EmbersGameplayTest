@@ -13,6 +13,18 @@ class UEGT_RequestDefinition;
 /** Broadcast every time the score changes */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnScoreChanged, int32, NewScore);
 
+/** Flow of a game level: rules screen, timed play, results screen */
+UENUM(BlueprintType)
+enum class EEGT_LevelPhase : uint8
+{
+	Briefing,
+	Playing,
+	Ended
+};
+
+/** Broadcast every time the level phase changes */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLevelPhaseChanged, EEGT_LevelPhase, NewPhase);
+
 /**
  *  Simple GameMode for a first person game
  */
@@ -23,6 +35,7 @@ class AEmbersGameplayTestGameMode : public AGameModeBase
 
 public:
 	AEmbersGameplayTestGameMode();
+	virtual void StartPlay() override;
 
 	/** Actual colour of a named sticker colour (magenta if unmapped) */
 	UFUNCTION(BlueprintPure, Category="Stickers")
@@ -69,6 +82,32 @@ public:
 
 #pragma endregion
 
+#pragma region LevelFlow
+
+	// Leaves the briefing: unfreezes the player and starts the level timer
+	UFUNCTION(BlueprintCallable, Category="Level Flow")
+	void StartLevel();
+
+	// Reloads the current level from scratch
+	UFUNCTION(BlueprintCallable, Category="Level Flow")
+	void RestartLevel();
+
+	UFUNCTION(BlueprintPure, Category="Level Flow")
+	EEGT_LevelPhase GetLevelPhase() const { return LevelPhase; }
+
+	UFUNCTION(BlueprintPure, Category="Level Flow")
+	bool IsLevelPlaying() const { return LevelPhase == EEGT_LevelPhase::Playing; }
+
+	// Time left on the level timer (full duration during the briefing, 0 once ended or if not a game level)
+	UFUNCTION(BlueprintPure, Category="Level Flow")
+	float GetLevelRemainingTime() const;
+
+	// Fired every time the level phase changes
+	UPROPERTY(BlueprintAssignable, Category="Level Flow")
+	FOnLevelPhaseChanged OnLevelPhaseChanged;
+
+#pragma endregion
+
 protected:
 	virtual void BeginPlay() override;
 	void CreateRandomRequests();
@@ -90,6 +129,31 @@ protected:
 
 	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category="Requests")
 	int32 Score = 0;
+
+#pragma endregion
+
+#pragma region LevelFlow
+
+	// Freezes the player outside of the Playing phase and notifies listeners
+	void SetLevelPhase(EEGT_LevelPhase NewPhase);
+
+	// Level timer callback
+	void EndLevel();
+
+	// PROPERTIES
+	// Real game level: rules screen, timed play and results screen. Untick for test scenes (free play, no timer)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Level Flow")
+	bool bIsGameLevel = true;
+
+	// Duration of the timed play
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Level Flow", meta = (EditCondition = "bIsGameLevel", ClampMin = 1, Units = "s"))
+	float LevelDuration = 180.0f;
+
+	// Runtime
+	UPROPERTY(Transient, VisibleAnywhere, Category="Level Flow")
+	EEGT_LevelPhase LevelPhase = EEGT_LevelPhase::Playing;
+
+	FTimerHandle LevelTimerHandle;
 
 #pragma endregion
 };

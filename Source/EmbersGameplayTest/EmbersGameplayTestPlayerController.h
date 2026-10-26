@@ -24,6 +24,8 @@ public:
 	/** Constructor */
 	AEmbersGameplayTestPlayerController();
 
+	void SetPlayerFrozen(bool bFrozen);
+
 protected:
 
 	/** Input Mapping Contexts */

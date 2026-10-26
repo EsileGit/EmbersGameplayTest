@@ -73,7 +73,7 @@ bool AEGT_CounterDesk::GetActiveRequestProgress(float& OutRemainingTime, int32& 
 bool AEGT_CounterDesk::TryDraftRequest()
 {
 	AEmbersGameplayTestGameMode* GameMode = GetGameMode();
-	if (HasActiveRequest() || !GameMode)
+	if (HasActiveRequest() || !GameMode || !GameMode->IsLevelPlaying())
 	{
 		return false;
 	}
@@ -116,8 +116,12 @@ void AEGT_CounterDesk::HandleDeliveryZoneOverlap(UPrimitiveComponent* Overlapped
 	int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// Held parcels don't generate overlaps (physics only collision): they are checked once dropped or thrown
+	// Once the level is over, late parcels (thrown right before the end) don't count anymore
 	AEGT_ParcelBase* Parcel = Cast<AEGT_ParcelBase>(OtherActor);
-	if (!IsValid(Parcel) || Parcel->IsHeld() || !HasActiveRequest())
+	const AEmbersGameplayTestGameMode* GameMode = GetGameMode();
+	const bool bIsParcelHeld = !IsValid(Parcel) || Parcel->IsHeld();
+	const bool bIsLevelPlaying = GameMode && GameMode->IsLevelPlaying();
+	if (bIsParcelHeld || !HasActiveRequest() || !bIsLevelPlaying)
 	{
 		return;
 	}

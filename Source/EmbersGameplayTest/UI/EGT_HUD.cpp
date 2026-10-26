@@ -7,6 +7,8 @@
 #include "EmbersGameplayTestGameMode.h"
 #include "Gameplay/EGT_GameplayLibrary.h"
 #include "Item/EGT_ParcelDefinition.h"
+#include "UI/EGT_BriefingWidget.h"
+#include "UI/EGT_ResultsWidget.h"
 
 #include "Blueprint/UserWidget.h"
 #include "Engine/Engine.h"
@@ -35,27 +37,93 @@ void AEGT_HUD::BeginPlay()
 	if (!OverlayWidgetClass)
 	{
 		UE_LOG(LogEmbersGameplayTest, Warning, TEXT("'%s' has no HUDWidgetClass set: no HUD will be displayed."), *GetNameSafe(this));
-		return;
+	}
+	else
+	{
+		OverlayWidget = CreateWidget<UUserWidget>(PlayerOwner, OverlayWidgetClass);
+		if (OverlayWidget)
+		{
+			OverlayWidget->AddToPlayerScreen(0);
+		}
 	}
 
-	OverlayWidget = CreateWidget<UUserWidget>(PlayerOwner, OverlayWidgetClass);
-	if (OverlayWidget)
+	// Update HUD according to current phase (it should be the correct one by now, no racing condition expected here)
+	if (AEmbersGameplayTestGameMode* GameMode = GetWorld()->GetAuthGameMode<AEmbersGameplayTestGameMode>())
 	{
-		OverlayWidget->AddToPlayerScreen(0);
+		GameMode->OnLevelPhaseChanged.AddUniqueDynamic(this, &ThisClass::HandleLevelPhaseChanged);
+		HandleLevelPhaseChanged(GameMode->GetLevelPhase());
 	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 void AEGT_HUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (OverlayWidget)
+	if (AEmbersGameplayTestGameMode* GameMode = GetWorld()->GetAuthGameMode<AEmbersGameplayTestGameMode>())
 	{
-		OverlayWidget->RemoveFromParent();
-		OverlayWidget = nullptr;
+		GameMode->OnLevelPhaseChanged.RemoveDynamic(this, &ThisClass::HandleLevelPhaseChanged);
 	}
+
+	for (UUserWidget* Widget : TArray<UUserWidget*>{ OverlayWidget, BriefingWidget, ResultsWidget })
+	{
+		if (Widget)
+		{
+			Widget->RemoveFromParent();
+		}
+	}
+	OverlayWidget = nullptr;
+	BriefingWidget = nullptr;
+	ResultsWidget = nullptr;
 
 	Super::EndPlay(EndPlayReason);
 }
+
+#pragma region LevelFlow
+
+// ---------------------------------------------------------------------------------------------------------------------
+void AEGT_HUD::HandleLevelPhaseChanged(EEGT_LevelPhase NewPhase)
+{
+	// Above the overlay
+	constexpr int32 LevelFlowZOrder = 10;
+
+	switch (NewPhase)
+	{
+	case EEGT_LevelPhase::Briefing:
+		if (!BriefingWidgetClass)
+		{
+			UE_LOG(LogEmbersGameplayTest, Warning, TEXT("'%s' has no BriefingWidgetClass set: the level can't be started from UI."), *GetNameSafe(this));
+			break;
+		}
+
+		BriefingWidget = CreateWidget<UEGT_BriefingWidget>(PlayerOwner, BriefingWidgetClass);
+		BriefingWidget->AddToPlayerScreen(LevelFlowZOrder);
+		break;
+
+	case EEGT_LevelPhase::Playing:
+		if (BriefingWidget)
+		{
+			BriefingWidget->RemoveFromParent();
+			BriefingWidget = nullptr;
+		}
+		break;
+
+	case EEGT_LevelPhase::Ended:
+		if (!ResultsWidgetClass)
+		{
+			UE_LOG(LogEmbersGameplayTest, Warning, TEXT("'%s' has no ResultsWidgetClass set: no results will be displayed."), *GetNameSafe(this));
+			break;
+		}
+
+		ResultsWidget = CreateWidget<UEGT_ResultsWidget>(PlayerOwner, ResultsWidgetClass);
+		ResultsWidget->AddToPlayerScreen(LevelFlowZOrder);
+		if (const AEmbersGameplayTestGameMode* GameMode = GetWorld()->GetAuthGameMode<AEmbersGameplayTestGameMode>())
+		{
+			ResultsWidget->OnShowResults(GameMode->GetScore());
+		}
+		break;
+	}
+}
+
+#pragma endregion
 
 // ---------------------------------------------------------------------------------------------------------------------
 void AEGT_HUD::DrawHUD()
