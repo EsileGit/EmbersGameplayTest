@@ -6,6 +6,7 @@
 #include "Item/EGT_ParcelBase.h"
 
 #include "Components/BoxComponent.h"
+#include "NiagaraComponent.h"
 
 // ---------------------------------------------------------------------------------------------------------------------
 UEGT_SnapSpotComponent::UEGT_SnapSpotComponent()
@@ -45,6 +46,16 @@ void UEGT_SnapSpotComponent::OnRegister()
 	// Re-applied on every register so that edits in the details panel are reflected
 	SnapZone->SetBoxExtent(SnapZoneExtent);
 	SnapZone->SetRelativeLocation(SnapZoneOffset);
+
+	if (!IsValid(SnapParticles))
+	{
+		SnapParticles = NewObject<UNiagaraComponent>(Owner, NAME_None, RF_Transient | RF_TextExportTransient);
+		SnapParticles->SetupAttachment(this);
+		SnapParticles->SetAutoDestroy(false);
+		SnapParticles->RegisterComponent();
+	}
+
+	SnapParticles->SetAsset(SnapFX);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -55,6 +66,12 @@ void UEGT_SnapSpotComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 		SnapZone->DestroyComponent();
 	}
 	SnapZone = nullptr;
+
+	if (IsValid(SnapParticles))
+	{
+		SnapParticles->DestroyComponent();
+	}
+	SnapParticles = nullptr;
 
 	Super::OnComponentDestroyed(bDestroyingHierarchy);
 }
@@ -90,8 +107,14 @@ void UEGT_SnapSpotComponent::HandleSnapZoneBeginOverlap(UPrimitiveComponent* Ove
 		return;
 	}
 
+	if (SnapParticles)
+	{
+		SnapParticles->Deactivate();
+	}
+
 	Occupant = Parcel;
 	Parcel->SnapTo(this);
+
 	OnParcelSnapped.Broadcast(Parcel);
 }
 
@@ -103,6 +126,11 @@ void UEGT_SnapSpotComponent::HandleSnapZoneEndOverlap(UPrimitiveComponent* Overl
 	if (!Parcel || Parcel != Occupant.Get())
 	{
 		return;
+	}
+
+	if (SnapParticles)
+	{
+		SnapParticles->Activate(true);
 	}
 
 	Occupant.Reset();

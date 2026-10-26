@@ -6,8 +6,10 @@
 #include "Components/ArrowComponent.h"
 #include "EGT_SnapSpotComponent.generated.h"
 
+class UNiagaraComponent;
 class AEGT_ParcelBase;
 class UBoxComponent;
+class UNiagaraSystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParcelSnapped, AEGT_ParcelBase*, Parcel);
 
@@ -15,7 +17,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnParcelSnapped, AEGT_ParcelBase*, 
  * Spot where a parcel snaps when it enters the snap zone: the parcel's snap attach point is placed on this arrow.
  * Holds one parcel at a time. 
  */
-UCLASS(ClassGroup=(Parcel), meta=(BlueprintSpawnableComponent))
+UCLASS(Blueprintable, ClassGroup=(Parcel), meta=(BlueprintSpawnableComponent))
 class EMBERSGAMEPLAYTEST_API UEGT_SnapSpotComponent : public UArrowComponent
 {
 	GENERATED_BODY()
@@ -55,10 +57,18 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Snap|Zone", meta = (Units = "cm"))
 	FVector SnapZoneOffset = FVector(0.0f, 0.0f, 30.0f);
 
+	// Looping effect played at the arrow while the spot is free (must be a looping system). None = no effect
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Snap|FX")
+	TObjectPtr<UNiagaraSystem> SnapFX;
+
 	// Runtime
 	// Created on register (not a Blueprint component) so that a snap spot is a single component to place
 	UPROPERTY(Transient)
 	TObjectPtr<UBoxComponent> SnapZone;
+	
+	// Created on register (not a Blueprint component) to add some FX
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraComponent> SnapParticles;
 
 	UPROPERTY(Transient, VisibleInstanceOnly, Category="Snap")
 	TWeakObjectPtr<AEGT_ParcelBase> Occupant;
