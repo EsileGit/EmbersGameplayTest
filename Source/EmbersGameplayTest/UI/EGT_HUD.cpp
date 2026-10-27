@@ -11,10 +11,12 @@
 #include "UI/EGT_ResultsWidget.h"
 
 #include "Blueprint/UserWidget.h"
+#include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "Engine/Font.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
+#include "InputCoreTypes.h"
 
 #if !UE_BUILD_SHIPPING
 static TAutoConsoleVariable<bool> CVarDebugRequests(
@@ -117,7 +119,7 @@ void AEGT_HUD::HandleLevelPhaseChanged(EEGT_LevelPhase NewPhase)
 		ResultsWidget->AddToPlayerScreen(LevelFlowZOrder);
 		if (const AEmbersGameplayTestGameMode* GameMode = GetWorld()->GetAuthGameMode<AEmbersGameplayTestGameMode>())
 		{
-			ResultsWidget->OnShowResults(GameMode->GetScore());
+			ResultsWidget->OnShowResults(GameMode->GetScore(), GameMode->GetScoreboardRank());
 		}
 		break;
 	}
@@ -157,10 +159,32 @@ void AEGT_HUD::DrawRequestsDebug()
 
 	float X = RequestsDebugOrigin.X;
 	float Y = RequestsDebugOrigin.Y;
-	DrawText(FString::Printf(TEXT("REQUESTS (%d)  SCORE: %d"), Requests.Num(), GameMode->GetScore()), FLinearColor::White, X, Y, Font);
+
+	// Only the requests fitting on screen are drawn (2 lines each), the window is scrolled with PageUp / PageDown
+	const float BlockHeight = 2.0f * LineHeight + 4.0f;
+	const float AvailableHeight = Canvas->ClipY - (Y + LineHeight) - RequestsDebugBottomMargin - LineHeight;
+	const int32 VisibleCount = FMath::Max(1, FMath::FloorToInt(AvailableHeight / BlockHeight));
+
+	if (PlayerOwner->WasInputKeyJustPressed(EKeys::PageDown))
+	{
+		++RequestsDebugFirstIndex;
+	}
+	if (PlayerOwner->WasInputKeyJustPressed(EKeys::PageUp))
+	{
+		--RequestsDebugFirstIndex;
+	}
+	RequestsDebugFirstIndex = FMath::Clamp(RequestsDebugFirstIndex, 0, FMath::Max(0, Requests.Num() - VisibleCount));
+	const int32 EndIndex = FMath::Min(Requests.Num(), RequestsDebugFirstIndex + VisibleCount);
+
+	FString Header = FString::Printf(TEXT("REQUESTS (%d)  SCORE: %d"), Requests.Num(), GameMode->GetScore());
+	if (Requests.Num() > VisibleCount)
+	{
+		Header += FString::Printf(TEXT("  [%d - %d]  PgUp/PgDn"), RequestsDebugFirstIndex, EndIndex - 1);
+	}
+	DrawText(Header, FLinearColor::White, X, Y, Font);
 	Y += LineHeight;
 
-	for (int32 RequestIndex = 0; RequestIndex < Requests.Num(); ++RequestIndex)
+	for (int32 RequestIndex = RequestsDebugFirstIndex; RequestIndex < EndIndex; ++RequestIndex)
 	{
 		const FEGT_Request& Request = Requests[RequestIndex];
 		const int32 Points = GameMode->GetRequestCurrentPoints(Request);
@@ -226,6 +250,11 @@ void AEGT_HUD::DrawRequestsDebug()
 			DrawText(TEXT("(no sticker)"), FLinearColor::Gray, StickerX, Y, Font);
 		}
 		Y += LineHeight + 4.0f;
+	}
+
+	if (EndIndex < Requests.Num())
+	{
+		DrawText(FString::Printf(TEXT("... %d more"), Requests.Num() - EndIndex), FLinearColor::Gray, X, Y, Font);
 	}
 }
 

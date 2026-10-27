@@ -6,7 +6,9 @@
 #include "EmbersGameplayTestPlayerController.h"
 
 #include "Gameplay/EGT_RequestDefinition.h"
+#include "Gameplay/EGT_ScoreboardSubsystem.h"
 
+#include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -267,6 +269,52 @@ float AEmbersGameplayTestGameMode::GetLevelRemainingTime() const
 
 	// GetTimerRemaining returns -1 when the timer isn't running
 	return FMath::Max(GetWorldTimerManager().GetTimerRemaining(LevelTimerHandle), 0.0f);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+FText AEmbersGameplayTestGameMode::GetLevelDisplayName() const
+{
+	return LevelDisplayName.IsEmpty() ? FText::FromString(UGameplayStatics::GetCurrentLevelName(this)) : LevelDisplayName;
+}
+
+#pragma endregion
+
+#pragma region Scoreboard
+
+// ---------------------------------------------------------------------------------------------------------------------
+FName AEmbersGameplayTestGameMode::GetScoreboardLevelKey() const
+{
+	return FName(UGameplayStatics::GetCurrentLevelName(this));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+int32 AEmbersGameplayTestGameMode::GetScoreboardRank() const
+{
+	if (bScoreSubmitted)
+	{
+		return INDEX_NONE;
+	}
+
+	return GetGameInstance()->GetSubsystem<UEGT_ScoreboardSubsystem>()->GetRankForScore(GetScoreboardLevelKey(), Score, ScoreboardSize);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+int32 AEmbersGameplayTestGameMode::SubmitScore(const FString& PlayerName)
+{
+	if (LevelPhase != EEGT_LevelPhase::Ended || bScoreSubmitted)
+	{
+		UE_LOG(LogEmbersGameplayTest, Warning, TEXT("[GameMode] Can't submit score: level not ended or score already submitted"));
+		return INDEX_NONE;
+	}
+
+	bScoreSubmitted = true;
+	return GetGameInstance()->GetSubsystem<UEGT_ScoreboardSubsystem>()->SubmitScore(GetScoreboardLevelKey(), GetLevelDisplayName(), PlayerName, Score, ScoreboardSize);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+TArray<FEGT_ScoreboardEntry> AEmbersGameplayTestGameMode::GetScoreboardEntries() const
+{
+	return GetGameInstance()->GetSubsystem<UEGT_ScoreboardSubsystem>()->GetEntries(GetScoreboardLevelKey());
 }
 
 #pragma endregion

@@ -34,6 +34,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Debug")
 	FVector2D RequestsDebugOrigin = FVector2D(20.0f, 150.0f);
 
+	// Space kept free below the requests debug list, in screen pixels
+	UPROPERTY(EditAnywhere, Category="Debug")
+	float RequestsDebugBottomMargin = 20.0f;
+
+	// Runtime
+	// First request shown by the debug list, scrolled with PageUp / PageDown
+	int32 RequestsDebugFirstIndex = 0;
+
 #pragma endregion
 
 #pragma region LevelFlow

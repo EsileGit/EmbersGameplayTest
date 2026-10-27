@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Gameplay/EGT_RequestTypes.h"
+#include "Gameplay/EGT_ScoreboardSaveGame.h"
 #include "Item/EGT_ParcelDamageTypes.h"
 #include "Item/EGT_StickerTypes.h"
 #include "EmbersGameplayTestGameMode.generated.h"
@@ -116,6 +117,27 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Level Flow")
 	FOnLevelPhaseChanged OnLevelPhaseChanged;
 
+	// Player-facing name of the level (falls back to the level asset name if LevelDisplayName is empty)
+	UFUNCTION(BlueprintPure, Category="Level Flow")
+	FText GetLevelDisplayName() const;
+
+#pragma endregion
+
+#pragma region Scoreboard
+
+	// Rank (0 = best) the current score would take on this level's scoreboard, or INDEX_NONE if it doesn't make it
+	UFUNCTION(BlueprintPure, Category="Level Flow|Scoreboard")
+	int32 GetScoreboardRank() const;
+
+	// Records the current score on this level's scoreboard, once the level has ended (only once per run).
+	// Returns its rank, or INDEX_NONE if not recorded
+	UFUNCTION(BlueprintCallable, Category="Level Flow|Scoreboard")
+	int32 SubmitScore(const FString& PlayerName);
+
+	// This level's scoreboard, best first
+	UFUNCTION(BlueprintPure, Category="Level Flow|Scoreboard")
+	TArray<FEGT_ScoreboardEntry> GetScoreboardEntries() const;
+
 #pragma endregion
 
 protected:
@@ -177,11 +199,32 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Level Flow", meta = (EditCondition = "bIsGameLevel", ClampMin = 1, Units = "s"))
 	float LevelDuration = 180.0f;
 
+	// Player-facing name of the level. Display only: scoreboards are keyed by the level asset name, so renaming this keeps them.
+	// Levels sharing this game mode BP share this name too (make a child BP if they need different ones)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Level Flow")
+	FText LevelDisplayName;
+
 	// Runtime
 	UPROPERTY(Transient, VisibleAnywhere, Category="Level Flow")
 	EEGT_LevelPhase LevelPhase = EEGT_LevelPhase::Playing;
 
 	FTimerHandle LevelTimerHandle;
+
+#pragma endregion
+
+#pragma region Scoreboard
+
+	// Key of this level in the saved scoreboards (level asset name, PIE prefix stripped)
+	FName GetScoreboardLevelKey() const;
+
+	// PROPERTIES
+	// Number of best runs kept on this level's scoreboard
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Level Flow|Scoreboard", meta = (EditCondition = "bIsGameLevel", ClampMin = 1))
+	int32 ScoreboardSize = 5;
+
+	// Runtime
+	UPROPERTY(Transient, VisibleAnywhere, Category="Level Flow|Scoreboard")
+	bool bScoreSubmitted = false;
 
 #pragma endregion
 };
